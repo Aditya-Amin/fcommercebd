@@ -1,0 +1,17 @@
+# Laravel defaults — never commit these
+.env
+.env.backup
+.env.production
+/storage/*.key
+/storage/logs/*.log
+/storage/framework/cache/*
+/storage/framework/sessions/*
+/storage/framework/views/*
+/storage/framework/testing/*
+/bootstrap/cache/*.php
+/vendor
+/node_modules
+.phpunit.result.cache
+.idea
+.vscode
+*.log

@@ -1,0 +1,10 @@
+{
+  "data": [
+    { "id": "cat_women", "slug": "women", "name": "Women" },
+    { "id": "cat_men", "slug": "men", "name": "Men" },
+    { "id": "cat_kids", "slug": "kids", "name": "Kids" },
+    { "id": "cat_accessories", "slug": "accessories", "name": "Accessories" },
+    { "id": "cat_beauty", "slug": "beauty", "name": "Beauty & Cosmetics" },
+    { "id": "cat_home", "slug": "home", "name": "Home & Living" }
+  ]
+}

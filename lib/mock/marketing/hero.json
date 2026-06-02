@@ -1,0 +1,26 @@
+{
+  "badge": "বাংলাদেশী F-commerce সেলারদের জন্য তৈরি",
+  "titleStart": "ফেসবুক বিজনেস এখন চলবে",
+  "titleHighlight": "অটোমেটিক",
+  "titleEnd": "",
+  "description": "প্রোডাক্ট আপলোড করুন, AI দিয়ে পোস্ট ও ছবি বানান, অর্ডার ম্যানেজ করুন, প্রমোশনাল SMS পাঠান, এবং Steadfast বা Pathao কুরিয়ার বুক করুন — সবকিছু একটাই ড্যাশবোর্ড থেকে।",
+  "primaryCta": { "label": "ফ্রি ট্রায়াল শুরু করুন", "href": "/register" },
+  "secondaryCta": { "label": "প্রাইসিং দেখুন", "href": "/pricing" },
+  "trustBadges": [
+    "কোনো কার্ড লাগবে না",
+    "৭ দিনের ফ্রি ট্রায়াল",
+    "যেকোনো সময় বাতিল করুন"
+  ],
+  "preview": {
+    "todayLabel": "আজকের রিপোর্ট",
+    "overviewTitle": "ড্যাশবোর্ড সারাংশ",
+    "liveLabel": "● লাইভ",
+    "stats": [
+      { "label": "অর্ডার", "value": "১২৮", "delta": "+১২%" },
+      { "label": "আয়", "value": "৳৬২হাজার", "delta": "+৮%" },
+      { "label": "AI পোস্ট", "value": "২৪", "delta": "+৪০%" }
+    ],
+    "aiCardTitle": "AI পোস্ট তৈরি করুন",
+    "aiCardBadge": "Growth"
+  }
+}

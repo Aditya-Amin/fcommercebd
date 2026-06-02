@@ -1,0 +1,138 @@
+{
+  "data": [
+    {
+      "id": "p_001",
+      "title": "Soft Cotton Kurti — Rose",
+      "slug": "soft-cotton-kurti-rose",
+      "description": "Comfortable kurti made from soft cotton fabric. Stays comfortable all day even in the heat, and the color does not fade. Brand new design — perfect for sharing on Facebook.",
+      "shortDescription": "100% cotton kurti, all sizes available",
+      "price": 1290,
+      "comparePrice": 1590,
+      "stock": 24,
+      "category": "women",
+      "status": "active",
+      "images": [
+        {
+          "id": "img_001_1",
+          "url": "https://images.unsplash.com/photo-1583391733956-3750e0ff4e8b?w=800&q=80",
+          "alt": "Soft Cotton Kurti Rose - front view",
+          "isPrimary": true
+        }
+      ],
+      "tags": ["kurti", "cotton", "women", "summer"],
+      "facebookPostId": null,
+      "createdAt": "2025-04-30T10:00:00.000Z",
+      "updatedAt": "2025-04-30T10:00:00.000Z"
+    },
+    {
+      "id": "p_002",
+      "title": "Embroidered Panjabi — Cream",
+      "slug": "embroidered-panjabi-cream",
+      "description": "Premium hand-embroidered panjabi. Perfect for Eid, weddings, or any festival. Fine cotton fabric, skin-friendly.",
+      "shortDescription": "Premium embroidered panjabi",
+      "price": 1850,
+      "stock": 12,
+      "category": "men",
+      "status": "active",
+      "images": [
+        {
+          "id": "img_002_1",
+          "url": "https://images.unsplash.com/photo-1622445275576-721325763afe?w=800&q=80",
+          "alt": "Embroidered Panjabi Cream",
+          "isPrimary": true
+        }
+      ],
+      "tags": ["panjabi", "men", "eid", "embroidery"],
+      "facebookPostId": "fb_post_98765",
+      "createdAt": "2025-04-27T14:00:00.000Z",
+      "updatedAt": "2025-04-28T09:30:00.000Z"
+    },
+    {
+      "id": "p_003",
+      "title": "Kids Casual Set — Sky",
+      "slug": "kids-casual-set-sky",
+      "description": "Comfortable casual set for kids. Soft fabric, solid colors that stay vibrant even after multiple washes.",
+      "price": 950,
+      "stock": 0,
+      "category": "kids",
+      "status": "out_of_stock",
+      "images": [
+        {
+          "id": "img_003_1",
+          "url": "https://images.unsplash.com/photo-1622290291468-a28f7a7dc6a8?w=800&q=80",
+          "alt": "Kids Casual Set Sky Blue",
+          "isPrimary": true
+        }
+      ],
+      "tags": ["kids", "casual", "set"],
+      "createdAt": "2025-04-24T11:00:00.000Z",
+      "updatedAt": "2025-04-29T08:00:00.000Z"
+    },
+    {
+      "id": "p_004",
+      "title": "Hand-stitched Saree — Maroon",
+      "slug": "hand-stitched-saree-maroon",
+      "description": "Premium hand-stitched saree. Ideal for weddings or any special occasion. Comes with a matching blouse piece.",
+      "shortDescription": "Bridal collection",
+      "price": 3490,
+      "comparePrice": 4200,
+      "stock": 7,
+      "category": "women",
+      "status": "active",
+      "images": [
+        {
+          "id": "img_004_1",
+          "url": "https://images.unsplash.com/photo-1610030469983-98e550d6193c?w=800&q=80",
+          "alt": "Hand-stitched Saree Maroon",
+          "isPrimary": true
+        }
+      ],
+      "tags": ["saree", "women", "wedding", "premium"],
+      "facebookPostId": "fb_post_12345",
+      "createdAt": "2025-04-21T15:00:00.000Z",
+      "updatedAt": "2025-04-21T15:00:00.000Z"
+    },
+    {
+      "id": "p_005",
+      "title": "Leather Wallet — Brown",
+      "slug": "leather-wallet-brown",
+      "description": "Genuine leather wallet. Multiple card slots and a secure cash pocket.",
+      "price": 690,
+      "stock": 38,
+      "category": "accessories",
+      "status": "draft",
+      "images": [
+        {
+          "id": "img_005_1",
+          "url": "https://images.unsplash.com/photo-1627123424574-724758594e93?w=800&q=80",
+          "alt": "Leather Wallet Brown",
+          "isPrimary": true
+        }
+      ],
+      "tags": ["wallet", "leather", "accessories"],
+      "createdAt": "2025-05-02T09:00:00.000Z",
+      "updatedAt": "2025-05-02T09:00:00.000Z"
+    },
+    {
+      "id": "p_006",
+      "title": "Silk Hijab — Olive",
+      "slug": "silk-hijab-olive",
+      "description": "Premium silk hijab. Soft, lightweight, and comfortable all day. Available in many colors.",
+      "price": 450,
+      "stock": 60,
+      "category": "women",
+      "status": "active",
+      "images": [
+        {
+          "id": "img_006_1",
+          "url": "https://images.unsplash.com/photo-1558618666-fcd25c85cd64?w=800&q=80",
+          "alt": "Silk Hijab Olive",
+          "isPrimary": true
+        }
+      ],
+      "tags": ["hijab", "silk", "women"],
+      "createdAt": "2025-04-15T12:00:00.000Z",
+      "updatedAt": "2025-04-25T10:00:00.000Z"
+    }
+  ]
+}

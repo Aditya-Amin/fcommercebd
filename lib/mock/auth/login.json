@@ -1,0 +1,28 @@
+{
+  "title": "আবার স্বাগতম",
+  "subtitle": "আপনার FcommerceBD ড্যাশবোর্ডে লগইন করুন।",
+  "fields": {
+    "email": {
+      "label": "ইমেইল",
+      "placeholder": "you@example.com"
+    },
+    "password": {
+      "label": "পাসওয়ার্ড",
+      "placeholder": "••••••••"
+    }
+  },
+  "errors": {
+    "required": "ইমেইল এবং পাসওয়ার্ড দিন।"
+  },
+  "submit": "লগইন করুন",
+  "submitting": "লগইন হচ্ছে…",
+  "successToast": "আবার স্বাগতম!",
+  "rememberMe": "আমাকে মনে রাখুন",
+  "forgotPassword": "পাসওয়ার্ড ভুলে গেছেন?",
+  "noAccount": "অ্যাকাউন্ট নেই?",
+  "createOne": "তৈরি করুন",
+  "demoNotice": {
+    "label": "ডেমো:",
+    "text": "যেকোনো ইমেইল/পাসওয়ার্ড কাজ করবে — এটি একটি UI প্রটোটাইপ।"
+  }
+}

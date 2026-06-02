@@ -1,0 +1,44 @@
+{
+  "title": "অ্যাকাউন্ট তৈরি করুন",
+  "subtitle": "মাত্র কয়েক মিনিটে আপনার ফেসবুক বিজনেস অটোমেট করুন।",
+  "fields": {
+    "name": {
+      "label": "পূর্ণ নাম",
+      "placeholder": "আপনার নাম"
+    },
+    "business": {
+      "label": "ব্যবসার নাম",
+      "placeholder": "যেমনঃ Aditi Fashion House"
+    },
+    "phone": {
+      "label": "মোবাইল নাম্বার",
+      "placeholder": "01XXXXXXXXX",
+      "hint": "bKash পেমেন্টের জন্য এই নাম্বার ব্যবহার করব।"
+    },
+    "email": {
+      "label": "ইমেইল",
+      "placeholder": "you@example.com"
+    },
+    "password": {
+      "label": "পাসওয়ার্ড",
+      "placeholder": "কমপক্ষে ৬ অক্ষর"
+    }
+  },
+  "errors": {
+    "required": "প্রয়োজনীয় তথ্যগুলো পূরণ করুন।",
+    "passwordTooShort": "পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে।",
+    "invalidPhone": "সঠিক বাংলাদেশী মোবাইল নাম্বার দিন (যেমন 01XXXXXXXXX)।"
+  },
+  "submit": "অ্যাকাউন্ট খুলুন",
+  "submitting": "অ্যাকাউন্ট তৈরি হচ্ছে…",
+  "successToast": "স্বাগতম! আপনার FcommerceBD অ্যাকাউন্ট তৈরি হয়েছে।",
+  "terms": "অ্যাকাউন্ট তৈরি করে আপনি আমাদের",
+  "termsLink": "শর্তাবলী",
+  "and": "এবং",
+  "privacyLink": "প্রাইভেসি পলিসি",
+  "termsAccept": "মেনে নিচ্ছেন।",
+  "haveAccount": "ইতিমধ্যে অ্যাকাউন্ট আছে?",
+  "signIn": "লগইন করুন",
+  "selectedPlanLabel": "নির্বাচিত প্ল্যান",
+  "willPay": "অ্যাকাউন্ট তৈরির পর bKash পেমেন্ট করতে হবে।"
+}

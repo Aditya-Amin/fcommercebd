@@ -1,0 +1,118 @@
+{
+  "list": {
+    "title": "Products",
+    "subtitle": "products in your catalog.",
+    "addButton": "Add product",
+    "searchPlaceholder": "Search products…",
+    "categoryAll": "All categories",
+    "statusAll": "All status",
+    "empty": {
+      "title": "No products found",
+      "description": "Add a new product or change your filters."
+    },
+    "stockLabel": "Stock:",
+    "editButton": "Edit",
+    "deleteConfirm": "Are you sure you want to delete this product?",
+    "deleteSuccess": "Product deleted.",
+    "deleteError": "Could not delete. Please try again."
+  },
+  "form": {
+    "createTitle": "Add new product",
+    "createSubtitle": "Create a new product to share on Facebook.",
+    "editTitle": "Edit product",
+    "editSubtitle": "Update product information.",
+    "sections": {
+      "basic": "Basic information",
+      "pricing": "Pricing & stock",
+      "media": "Images",
+      "organize": "Category & tags"
+    },
+    "fields": {
+      "title": {
+        "label": "Product name",
+        "placeholder": "e.g. Soft Cotton Kurti — Rose",
+        "hint": "3-100 characters. This is what shows on Facebook."
+      },
+      "shortDescription": {
+        "label": "Short description",
+        "placeholder": "One-line product highlight",
+        "hint": "Optional — appears as the first line of your Facebook post."
+      },
+      "description": {
+        "label": "Full description",
+        "placeholder": "Detailed product description: fabric, size, color options, etc.",
+        "hint": "Markdown supported."
+      },
+      "price": {
+        "label": "Price (৳)",
+        "placeholder": "0",
+        "hint": "What customers will see."
+      },
+      "comparePrice": {
+        "label": "Original price (৳)",
+        "placeholder": "0",
+        "hint": "Optional — to show a discount."
+      },
+      "stock": {
+        "label": "Stock quantity",
+        "placeholder": "0",
+        "hint": "If zero, status auto-flips to Out of stock."
+      },
+      "category": {
+        "label": "Category"
+      },
+      "status": {
+        "label": "Status",
+        "hint": "Draft means it won't be published yet."
+      },
+      "tags": {
+        "label": "Tags",
+        "placeholder": "Comma-separated (e.g. kurti, cotton, summer)",
+        "hint": "Used as Facebook hashtags."
+      },
+      "images": {
+        "label": "Product images",
+        "uploadCta": "Add images",
+        "dragHint": "or drag & drop here",
+        "formats": "JPG, PNG or WebP — up to 5MB",
+        "primary": "Primary",
+        "setPrimary": "Set as primary",
+        "remove": "Remove"
+      }
+    },
+    "errors": {
+      "titleRequired": "Product name is required.",
+      "titleTooShort": "Name must be at least 3 characters.",
+      "priceRequired": "Price is required.",
+      "priceInvalid": "Please enter a valid price.",
+      "stockInvalid": "Stock must be a valid number.",
+      "imageRequired": "Add at least one image.",
+      "imageTooLarge": "Image is larger than 5MB.",
+      "imageInvalidType": "Only JPG, PNG or WebP allowed."
+    },
+    "submit": {
+      "create": "Add product",
+      "creating": "Adding…",
+      "update": "Update",
+      "updating": "Updating…"
+    },
+    "cancel": "Cancel",
+    "successCreate": "Product added successfully.",
+    "successUpdate": "Product updated.",
+    "errorGeneric": "Could not save. Please try again.",
+    "categoryNew": {
+      "trigger": "+ New category",
+      "title": "New category",
+      "description": "Add a new category to organize your products.",
+      "nameLabel": "Name",
+      "namePlaceholder": "e.g. Footwear",
+      "submit": "Create",
+      "submitting": "Creating…",
+      "cancel": "Cancel",
+      "success": "Category created.",
+      "errorRequired": "Category name is required.",
+      "errorDuplicate": "A category with this name already exists.",
+      "errorGeneric": "Could not create category."
+    }
+  }
+}

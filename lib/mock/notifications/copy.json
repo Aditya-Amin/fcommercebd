@@ -1,0 +1,18 @@
+{
+  "header": {
+    "title": "Notifications",
+    "markAllRead": "Mark all as read",
+    "viewAll": "View all notifications"
+  },
+  "tabs": {
+    "all": "All",
+    "unread": "Unread"
+  },
+  "empty": {
+    "all": "You're all caught up. Notifications will show up here.",
+    "unread": "No unread notifications."
+  },
+  "loadMore": "Load more",
+  "loading": "Loading…",
+  "toastTitlePrefix": ""
+}

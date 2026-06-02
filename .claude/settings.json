@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npx tsc *)",
+      "Bash(composer --version)",
+      "Bash(php --version)",
+      "Bash(composer create-project *)",
+      "PowerShell($src = \"c:\\\\Users\\\\Adi\\\\Desktop\\\\Fcommerce Landing Sass\\\\backend-tmp\"; $dst = \"c:\\\\Users\\\\Adi\\\\Desktop\\\\Fcommerce Landing Sass\\\\backend\"; Copy-Item \"$src\\\\artisan\" \"$dst\\\\\" -Force; Copy-Item \"$src\\\\phpunit.xml\" \"$dst\\\\\" -Force -ErrorAction SilentlyContinue; Copy-Item \"$src\\\\bootstrap\" \"$dst\\\\\" -Recurse -Force; Copy-Item \"$src\\\\public\" \"$dst\\\\\" -Recurse -Force; Copy-Item \"$src\\\\storage\" \"$dst\\\\\" -Recurse -Force; Copy-Item \"$src\\\\resources\" \"$dst\\\\\" -Recurse -Force; Copy-Item \"$src\\\\tests\" \"$dst\\\\\" -Recurse -Force -ErrorAction SilentlyContinue; Write-Output \"Top-level dirs copied\")",
+      "PowerShell($src = \"c:\\\\Users\\\\Adi\\\\Desktop\\\\Fcommerce Landing Sass\\\\backend-tmp\"; $dst = \"c:\\\\Users\\\\Adi\\\\Desktop\\\\Fcommerce Landing Sass\\\\backend\"; Copy-Item \"$src\\\\app\\\\Console\" \"$dst\\\\app\\\\\" -Recurse -Force; Copy-Item \"$src\\\\app\\\\Providers\" \"$dst\\\\app\\\\\" -Recurse -Force; Copy-Item \"$src\\\\app\\\\Http\\\\Kernel.php\" \"$dst\\\\app\\\\Http\\\\\" -Force; Copy-Item \"$src\\\\app\\\\Http\\\\Middleware\" \"$dst\\\\app\\\\Http\\\\\" -Recurse -Force; Copy-Item \"$src\\\\app\\\\Exceptions\\\\Handler.php\" \"$dst\\\\app\\\\Exceptions\\\\\" -Force -ErrorAction SilentlyContinue; Copy-Item \"$src\\\\app\\\\Models\\\\User.php\" \"$dst\\\\app\\\\Models\\\\\" -Force -ErrorAction SilentlyContinue; Write-Output \"App scaffolding copied\")",
+      "PowerShell($src = \"c:\\\\Users\\\\Adi\\\\Desktop\\\\Fcommerce Landing Sass\\\\backend-tmp\"; $dst = \"c:\\\\Users\\\\Adi\\\\Desktop\\\\Fcommerce Landing Sass\\\\backend\"; $configs = @\\(\"app\",\"auth\",\"broadcasting\",\"cache\",\"cors\",\"database\",\"filesystems\",\"hashing\",\"mail\",\"queue\",\"sanctum\",\"services\",\"session\",\"view\"\\); foreach \\($c in $configs\\) { $f = \"$src\\\\config\\\\$c.php\"; if \\(Test-Path $f\\) { Copy-Item $f \"$dst\\\\config\\\\\" -Force; Write-Output \"  copied $c.php\" } })",
+      "Bash(composer install *)",
+      "PowerShell(Copy-Item \"c:\\\\Users\\\\Adi\\\\Desktop\\\\Fcommerce Landing Sass\\\\backend-tmp\\\\app\\\\Http\\\\Controllers\\\\Controller.php\" \"c:\\\\Users\\\\Adi\\\\Desktop\\\\Fcommerce Landing Sass\\\\backend\\\\app\\\\Http\\\\Controllers\\\\Controller.php\" -Force)",
+      "Bash(composer dump-autoload *)",
+      "PowerShell($src = \"c:\\\\Users\\\\Adi\\\\Desktop\\\\Fcommerce Landing Sass\\\\backend-tmp\\\\routes\"; $dst = \"c:\\\\Users\\\\Adi\\\\Desktop\\\\Fcommerce Landing Sass\\\\backend\\\\routes\"; Copy-Item \"$src\\\\web.php\" \"$dst\\\\\" -Force; Copy-Item \"$src\\\\console.php\" \"$dst\\\\\" -Force; Copy-Item \"$src\\\\channels.php\" \"$dst\\\\\" -Force; Write-Output \"Routes copied\")",
+      "Bash(php artisan *)",
+      "Bash(curl -s -i \"http://localhost:8000/api/facebook/callback?code=test&state=test\")",
+      "Bash(php -i)",
+      "PowerShell($dir = \"C:\\\\php-cacert\"; if \\(!\\(Test-Path $dir\\)\\) { New-Item -ItemType Directory -Path $dir | Out-Null }; Invoke-WebRequest -Uri \"https://curl.se/ca/cacert.pem\" -OutFile \"$dir\\\\cacert.pem\" -UseBasicParsing; Write-Output \"Downloaded to $dir\\\\cacert.pem \\($\\(\\(\\(Get-Item \"$dir\\\\cacert.pem\"\\).Length / 1KB\\).ToString\\('N0'\\)\\) KB\\)\")",
+      "PowerShell($ini = \"C:\\\\Users\\\\Adi\\\\AppData\\\\Roaming\\\\Local\\\\lightning-services\\\\php-8.3.17+1\\\\bin\\\\win64\\\\php.ini\"; $cert = \"C:\\\\php-cacert\\\\cacert.pem\"; $content = Get-Content $ini -Raw; $append = \"`r`n; ─── CA bundle \\(added for HTTPS calls — graph.facebook.com, bkash, etc.\\) ───`r`ncurl.cainfo = `\"$cert`\"`r`nopenssl.cafile = `\"$cert`\"`r`n\"; Add-Content -Path $ini -Value $append -NoNewline; Write-Output \"php.ini updated\"; php -i 2>&1 | Select-String -Pattern \"cainfo|cafile\" | Select-Object -First 4)",
+      "Read(//c/php-cacert/**)",
+      "Bash(php -r 'require '\\\\''vendor/autoload.php'\\\\''; $c = new GuzzleHttp\\\\Client\\(['\\\\''verify'\\\\'' => '\\\\''C:\\\\php-cacert\\\\cacert.pem'\\\\'', '\\\\''http_errors'\\\\'' => false]\\); $r = $c->get\\('\\\\''https://graph.facebook.com/v21.0/'\\\\''\\); echo '\\\\''status: '\\\\'' . $r->getStatusCode\\(\\) . PHP_EOL; echo '\\\\''body: '\\\\'' . substr\\(\\(string\\)$r->getBody\\(\\), 0, 200\\) . PHP_EOL;')",
+      "Bash(php -r \"require 'vendor/autoload.php'; if \\(class_exists\\('\\\\\\\\Composer\\\\\\\\CaBundle\\\\\\\\CaBundle'\\)\\) { echo 'composer ca-bundle: ' . \\\\Composer\\\\CaBundle\\\\CaBundle::getBundledCaBundlePath\\(\\) . PHP_EOL; } else { echo 'composer ca-bundle NOT installed' . PHP_EOL; }\")",
+      "Bash(composer require *)",
+      "Bash(php -r \"require 'vendor/autoload.php'; echo 'bundled: ' . \\\\Composer\\\\CaBundle\\\\CaBundle::getBundledCaBundlePath\\(\\) . PHP_EOL; echo 'system: ' . \\\\Composer\\\\CaBundle\\\\CaBundle::getSystemCaRootBundlePath\\(\\) . PHP_EOL;\")",
+      "Bash(php -r 'require '\\\\''vendor/autoload.php'\\\\''; $ca = \\\\Composer\\\\CaBundle\\\\CaBundle::getBundledCaBundlePath\\(\\); echo '\\\\''using CA: '\\\\'' . $ca . PHP_EOL; $c = new GuzzleHttp\\\\Client\\(['\\\\''verify'\\\\'' => $ca, '\\\\''http_errors'\\\\'' => false]\\); $r = $c->get\\('\\\\''https://graph.facebook.com/v21.0/me'\\\\''\\); echo '\\\\''status: '\\\\'' . $r->getStatusCode\\(\\) . PHP_EOL; echo '\\\\''body excerpt: '\\\\'' . substr\\(\\(string\\)$r->getBody\\(\\), 0, 100\\) . PHP_EOL;')",
+      "Bash(composer show *)",
+      "Bash(node -e \"console.log\\(JSON.parse\\(require\\('fs'\\).readFileSync\\('lib/mock/products/products.json','utf8'\\)\\).data.length\\)\")",
+      "Bash(php -l \"c:/Users/Adi/Desktop/Fcommerce Landing Sass/backend/app/Services/Facebook/FacebookGraphService.php\")",
+      "WebFetch(domain:docs.google.com)",
+      "Bash(php -l \"c:/Users/Adi/Desktop/Fcommerce Landing Sass/backend/app/Http/Controllers/Api/SteadfastController.php\" \"c:/Users/Adi/Desktop/Fcommerce Landing Sass/backend/routes/api.php\")",
+      "Bash(php -l \"c:/Users/Adi/Desktop/Fcommerce Landing Sass/backend/app/Services/Steadfast/SteadfastService.php\")",
+      "Bash(php -l \"c:/Users/Adi/Desktop/Fcommerce Landing Sass/backend/app/Http/Controllers/Api/SteadfastController.php\")"
+    ]
+  }
+}

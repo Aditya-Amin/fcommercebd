@@ -1,0 +1,13 @@
+{
+  "links": [
+    { "href": "/#features", "label": "ফিচার" },
+    { "href": "/#how-it-works", "label": "কীভাবে কাজ করে" },
+    { "href": "/#testimonials", "label": "সেলারদের কথা" },
+    { "href": "/pricing", "label": "প্রাইসিং" },
+    { "href": "/#faq", "label": "প্রশ্ন" }
+  ],
+  "loginLabel": "লগইন",
+  "registerLabel": "ফ্রি শুরু করুন",
+  "dashboardLabel": "ড্যাশবোর্ড",
+  "mobileMenuLabel": "মেনু"
+}

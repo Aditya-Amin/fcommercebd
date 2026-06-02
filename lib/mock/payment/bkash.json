@@ -1,0 +1,63 @@
+{
+  "brand": "bKash",
+  "modal": {
+    "title": "bKash দিয়ে পেমেন্ট",
+    "subtitle": "নিরাপদ ও তাৎক্ষণিক পেমেন্ট",
+    "summaryLabel": "যা পরিশোধ করছেন",
+    "planLabel": "প্ল্যান",
+    "amountLabel": "মোট পরিমাণ",
+    "merchantLabel": "মার্চেন্ট",
+    "merchantValue": "FcommerceBD"
+  },
+  "steps": {
+    "intro": {
+      "title": "আপনার bKash অ্যাকাউন্ট নাম্বার দিন",
+      "description": "যে নাম্বার দিয়ে আপনি bKash ব্যবহার করেন সেটা দিন। আমরা সরাসরি আপনার bKash ওয়ালেট চার্জ করব।",
+      "phoneLabel": "bKash নাম্বার",
+      "phonePlaceholder": "01XXXXXXXXX",
+      "phoneError": "সঠিক bKash নাম্বার দিন (০১ দিয়ে শুরু, ১১ ডিজিট)।",
+      "agreement": "চালিয়ে যাওয়ার মাধ্যমে আপনি bKash-এর শর্তাবলী মেনে নিচ্ছেন।",
+      "submit": "পরবর্তী",
+      "submitting": "যাচাই হচ্ছে…"
+    },
+    "otp": {
+      "title": "OTP যাচাইকরণ",
+      "description": "আপনার bKash নাম্বারে একটি ৬ ডিজিটের কোড পাঠানো হয়েছে।",
+      "otpLabel": "OTP কোড",
+      "otpPlaceholder": "______",
+      "otpError": "৬ ডিজিটের সঠিক OTP দিন।",
+      "demoHint": "ডেমোর জন্য যেকোনো ৬ ডিজিট দিন (যেমন ১২৩৪৫৬)।",
+      "resend": "OTP আবার পাঠান",
+      "resendIn": "আবার পাঠাতে",
+      "submit": "যাচাই করুন",
+      "submitting": "যাচাই হচ্ছে…"
+    },
+    "pin": {
+      "title": "bKash PIN দিন",
+      "description": "আপনার bKash ওয়ালেট থেকে পেমেন্ট সম্পন্ন করতে পিন দিন।",
+      "pinLabel": "PIN",
+      "pinPlaceholder": "•••••",
+      "pinError": "৫ ডিজিটের সঠিক PIN দিন।",
+      "demoHint": "ডেমোর জন্য যেকোনো ৫ ডিজিট দিন।",
+      "submit": "পেমেন্ট কনফার্ম করুন",
+      "submitting": "প্রসেস হচ্ছে…"
+    },
+    "success": {
+      "title": "পেমেন্ট সফল হয়েছে! 🎉",
+      "description": "আপনার {plan} প্ল্যান চালু হয়ে গেছে। এখন থেকে সব ফিচার ব্যবহার করতে পারবেন।",
+      "transactionLabel": "ট্রানজেকশন আইডি",
+      "amountLabel": "পরিমাণ",
+      "continueLabel": "ড্যাশবোর্ডে যান"
+    },
+    "failure": {
+      "title": "পেমেন্ট ব্যর্থ হয়েছে",
+      "description": "দুঃখিত, আপনার পেমেন্ট সম্পন্ন করা যায়নি। আবার চেষ্টা করুন।",
+      "retryLabel": "আবার চেষ্টা করুন",
+      "cancelLabel": "বাতিল"
+    }
+  },
+  "footer": {
+    "secured": "Powered by bKash · 256-bit SSL Secured",
+    "support": "সাহায্য দরকার? কল করুন ১৬২৪৭"
+  }
+}
