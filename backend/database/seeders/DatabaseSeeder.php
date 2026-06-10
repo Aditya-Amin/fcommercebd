@@ -11,6 +11,7 @@ class DatabaseSeeder extends Seeder
         $this->call([
             PlanSeeder::class,
             CategorySeeder::class,
+            SmsTestSeeder::class,   // test user with Growth plan + 45/300 SMS used
         ]);
     }
 }

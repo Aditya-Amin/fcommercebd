@@ -11,6 +11,7 @@ import {
   Plug,
   CreditCard,
   Settings,
+  BarChart2,
   ChevronLeft,
   X
 } from "lucide-react";
@@ -32,9 +33,10 @@ const NAV = [
   { href: "/orders", label: "Orders", icon: ShoppingCart },
   { href: "/ai-generate", label: "AI Generate", icon: Sparkles },
   { href: "/campaigns", label: "SMS Campaigns", icon: MessageSquare },
+  { href: "/usage", label: "Usage Stats", icon: BarChart2 },
   { href: "/integrations", label: "Integrations", icon: Plug },
   { href: "/plan-details", label: "Plan", icon: CreditCard },
-  { href: "/settings", label: "Settings", icon: Settings }
+  { href: "/settings", label: "Settings", icon: Settings },
 ];
 
 export function Sidebar({

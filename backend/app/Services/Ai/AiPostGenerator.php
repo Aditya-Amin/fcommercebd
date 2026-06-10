@@ -3,6 +3,7 @@
 namespace App\Services\Ai;
 
 use App\Models\Product;
+use App\Models\Setting;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 
@@ -32,15 +33,20 @@ class AiPostGenerator
         $language = $options['language'] ?? 'en';
         $withTags = $options['includeHashtags'] ?? true;
 
-        $provider = (string) config('facebook.ai.provider', 'stub');
-        $apiKey   = (string) config('facebook.ai.api_key', '');
+        // DB settings take priority over config/env so admin can switch live.
+        $provider = (string) (Setting::get('facebook_post.provider') ?: config('facebook.ai.provider', 'stub'));
+        $apiKey   = (string) (Setting::get('facebook_post.api_key')  ?: config('facebook.ai.api_key', ''));
+        $model    = (string) (Setting::get('facebook_post.ai_model') ?: config('facebook.ai.model', ''));
 
         try {
             if ($provider === 'anthropic' && $apiKey !== '') {
-                return $this->generateWithAnthropic($product, $tone, $language, $withTags, $apiKey);
+                return $this->generateWithAnthropic($product, $tone, $language, $withTags, $apiKey, $model ?: 'claude-haiku-4-5');
             }
             if ($provider === 'openai' && $apiKey !== '') {
-                return $this->generateWithOpenAi($product, $tone, $language, $withTags, $apiKey);
+                return $this->generateWithOpenAi($product, $tone, $language, $withTags, $apiKey, $model ?: 'gpt-4o-mini');
+            }
+            if ($provider === 'deepseek' && $apiKey !== '') {
+                return $this->generateWithDeepSeek($product, $tone, $language, $withTags, $apiKey, $model ?: 'deepseek-chat');
             }
         } catch (\Throwable $e) {
             Log::warning('ai.generate.failed', [
@@ -84,10 +90,9 @@ class AiPostGenerator
         return ['caption' => $caption, 'hashtags' => $hashtags];
     }
 
-    private function generateWithAnthropic(Product $product, string $tone, string $language, bool $withTags, string $apiKey): array
+    private function generateWithAnthropic(Product $product, string $tone, string $language, bool $withTags, string $apiKey, string $model = 'claude-haiku-4-5'): array
     {
         $http  = $this->http ?? new Client(['timeout' => 30, 'http_errors' => false]);
-        $model = (string) config('facebook.ai.model', 'claude-haiku-4-5');
 
         $prompt = $this->buildPrompt($product, $tone, $language, $withTags);
 
@@ -112,13 +117,35 @@ class AiPostGenerator
         return $this->parseAiOutput($text, $withTags);
     }
 
-    private function generateWithOpenAi(Product $product, string $tone, string $language, bool $withTags, string $apiKey): array
+    private function generateWithDeepSeek(Product $product, string $tone, string $language, bool $withTags, string $apiKey, string $model = 'deepseek-chat'): array
     {
-        $http  = $this->http ?? new Client(['timeout' => 30, 'http_errors' => false]);
-        $model = (string) config('facebook.ai.model', 'gpt-4o-mini');
-
+        $http   = $this->http ?? new Client(['timeout' => 30, 'http_errors' => false]);
         $prompt = $this->buildPrompt($product, $tone, $language, $withTags);
 
+        $response = $http->post('https://api.deepseek.com/chat/completions', [
+            'headers' => [
+                'authorization' => 'Bearer ' . $apiKey,
+                'content-type'  => 'application/json',
+            ],
+            'json' => [
+                'model'    => $model,
+                'messages' => [['role' => 'user', 'content' => $prompt]],
+            ],
+        ]);
+
+        $body = json_decode((string) $response->getBody(), true) ?: [];
+        if ($response->getStatusCode() >= 400) {
+            throw new \RuntimeException('DeepSeek API error: ' . ($body['error']['message'] ?? 'unknown'));
+        }
+        $text = $body['choices'][0]['message']['content'] ?? '';
+        return $this->parseAiOutput($text, $withTags);
+    }
+
+    private function generateWithOpenAi(Product $product, string $tone, string $language, bool $withTags, string $apiKey, string $model = 'gpt-4o-mini'): array
+    {
+        $http  = $this->http ?? new Client(['timeout' => 30, 'http_errors' => false]);
+
+        $prompt   = $this->buildPrompt($product, $tone, $language, $withTags);
         $response = $http->post('https://api.openai.com/v1/chat/completions', [
             'headers' => [
                 'authorization' => 'Bearer ' . $apiKey,

@@ -40,6 +40,9 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
         <input
           ref={ref}
           id={inputId}
+          data-gramm="false"
+          data-gramm_editor="false"
+          data-enable-grammarly="false"
           className={cn(
             "h-10 w-full rounded-xl border border-border bg-white px-3 text-sm text-ink placeholder:text-ink-subtle transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-bg",
             leftIcon && "pl-9",

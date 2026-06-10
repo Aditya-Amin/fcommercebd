@@ -8,12 +8,14 @@ use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\Subscription;
 use App\Services\BkashService;
+use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 class BkashController extends Controller
@@ -41,21 +43,15 @@ class BkashController extends Controller
     {
         $data = $request->validate([
             'plan_id' => ['required', 'integer', 'exists:plans,id'],
+            'phone'   => ['sometimes', 'nullable', 'string', 'regex:/^01[3-9]\d{8}$/'],
         ]);
 
         $user = $request->user();
         $plan = Plan::active()->findOrFail($data['plan_id']);
 
-        if (empty($user->phone)) {
-            return response()->json([
-                'message' => 'A bKash-eligible phone number is required. Update your profile and try again.',
-            ], 422);
-        }
-
         // ── Simulate mode (BKASH_SIMULATE=true) ────────────────────────────
-        // Skip the real bKash API. Generate a synthetic paymentID + URL that
-        // points to our own /api/bkash/simulate-pay endpoint, which mimics
-        // bKash's redirect-back behavior and finalizes the payment instantly.
+        // Skip phone validation and real bKash API. Returns a synthetic
+        // paymentID + URL pointing to our interactive mock payment page.
         if (config('bkash.simulate')) {
             $paymentID = 'SIMTRX' . now()->format('YmdHis') . substr(bin2hex(random_bytes(3)), 0, 6);
 
@@ -73,18 +69,31 @@ class BkashController extends Controller
 
             return response()->json([
                 'paymentID' => $paymentID,
-                'bkashURL'  => url("/api/bkash/simulate-pay?paymentID={$paymentID}"),
+                'bkashURL'  => url("/bkash/simulate?paymentID={$paymentID}"),
                 'amount'    => $plan->price,
                 'currency'  => $plan->currency,
                 'simulated' => true,
             ]);
         }
 
+        // Phone is required for real bKash API (not needed in simulate mode above)
+        $phone = $data['phone'] ?? null ?: $user->phone;
+
+        if (empty($phone)) {
+            return response()->json([
+                'message' => 'A bKash-eligible phone number is required. Update your profile and try again.',
+            ], 422);
+        }
+
+        if (empty($user->phone)) {
+            $user->update(['phone' => $phone]);
+        }
+
         try {
             $bkashResponse = $this->bkash->createPayment([
                 'amount'         => $plan->price,
                 'currency'       => $plan->currency,
-                'payerReference' => $user->phone,
+                'payerReference' => $phone,
             ]);
         } catch (BkashException $e) {
             Log::channel('bkash')->error('create_payment_failed', [
@@ -298,17 +307,12 @@ class BkashController extends Controller
     }
 
     /**
-     * GET /api/bkash/simulate-pay?paymentID=...
+     * GET /bkash/simulate?paymentID=...
      *
-     * Public endpoint used ONLY when BKASH_SIMULATE=true. Mimics what bKash
-     * would do after the customer completes the wallet step:
-     *   1. Marks the Payment as completed
-     *   2. Calls finalize() to create the active subscription
-     *   3. Redirects to the frontend success page
-     *
-     * Production must set BKASH_SIMULATE=false so this endpoint short-circuits.
+     * Shows an interactive mock bKash payment page with "Simulate Success" and
+     * "Simulate Failure" buttons. Only active when BKASH_SIMULATE=true.
      */
-    public function simulatePay(Request $request): RedirectResponse
+    public function simulateShow(Request $request): View|RedirectResponse
     {
         $frontend = config('bkash.frontend_url');
 
@@ -317,7 +321,44 @@ class BkashController extends Controller
         }
 
         $paymentID = (string) $request->query('paymentID', '');
-        $payment   = Payment::where('payment_id', $paymentID)->first();
+        $payment   = Payment::with('plan')->where('payment_id', $paymentID)->first();
+
+        if (! $payment) {
+            return redirect("{$frontend}/payment/failed?reason=unknown_payment");
+        }
+
+        // Already finalised — skip the UI and go straight to success
+        if ($payment->isCompleted()) {
+            return redirect(
+                "{$frontend}/payment/success"
+                . '?paymentID=' . urlencode($paymentID)
+                . '&trxID='     . urlencode($payment->trx_id ?? '')
+                . '&plan='      . urlencode((string) ($payment->subscription?->plan_id ?? $payment->plan_id))
+            );
+        }
+
+        return view('bkash.simulate', [
+            'paymentID' => $paymentID,
+            'amount'    => $payment->amount,
+            'planName'  => $payment->plan?->name ?? 'Package',
+        ]);
+    }
+
+    /**
+     * GET /bkash/simulate/success?paymentID=...
+     * "Simulate Success" button click — finalises the payment and creates subscription.
+     * GET-based to avoid CSRF issues when navigating cross-origin from Next.js.
+     */
+    public function simulateSuccess(Request $request): RedirectResponse
+    {
+        $frontend  = config('bkash.frontend_url');
+        $paymentID = (string) $request->query('paymentID', '');
+
+        if (! config('bkash.simulate')) {
+            return redirect("{$frontend}/payment/failed?reason=simulate_disabled");
+        }
+
+        $payment = Payment::where('payment_id', $paymentID)->first();
 
         if (! $payment) {
             return redirect("{$frontend}/payment/failed?reason=unknown_payment");
@@ -334,7 +375,7 @@ class BkashController extends Controller
 
         $synthetic = [
             'paymentID'         => $paymentID,
-            'trxID'             => 'SIMBKT' . strtoupper(bin2hex(random_bytes(5))),
+            'trxID'             => 'SIMBKT' . Str::upper(bin2hex(random_bytes(5))),
             'transactionStatus' => 'Completed',
             'statusCode'        => '0000',
             'amount'            => (string) $payment->amount,
@@ -348,6 +389,7 @@ class BkashController extends Controller
             Log::channel('bkash')->error('simulate_finalize_failed', [
                 'paymentID' => $paymentID,
                 'message'   => $e->getMessage(),
+                'trace'     => $e->getTraceAsString(),
             ]);
             return redirect("{$frontend}/payment/failed?reason=server_error");
         }
@@ -358,6 +400,39 @@ class BkashController extends Controller
             . '&trxID='     . urlencode($synthetic['trxID'])
             . '&plan='      . urlencode((string) $subscription->plan_id)
         );
+    }
+
+    /**
+     * GET /bkash/simulate/failure?paymentID=...
+     * "Simulate Failure" button click — marks payment failed.
+     */
+    public function simulateFailure(Request $request): RedirectResponse
+    {
+        $frontend  = config('bkash.frontend_url');
+        $paymentID = (string) $request->query('paymentID', '');
+
+        if (! config('bkash.simulate')) {
+            return redirect("{$frontend}/payment/failed?reason=simulate_disabled");
+        }
+
+        $payment = Payment::where('payment_id', $paymentID)->first();
+
+        if ($payment && ! $payment->isCompleted()) {
+            $payment->update(['status' => 'failed']);
+        }
+
+        return redirect("{$frontend}/payment/failed?reason=simulate_failure");
+    }
+
+    /**
+     * GET /api/bkash/simulate-pay — kept for backward compatibility.
+     * Redirects to the new interactive simulate UI.
+     * @deprecated Use GET /bkash/simulate instead.
+     */
+    public function simulatePay(Request $request): RedirectResponse
+    {
+        $paymentID = $request->query('paymentID', '');
+        return redirect("/bkash/simulate?paymentID={$paymentID}");
     }
 
     /**

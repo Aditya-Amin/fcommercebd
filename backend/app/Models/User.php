@@ -79,4 +79,29 @@ class User extends Authenticatable
     {
         return $this->hasMany(Notification::class);
     }
+
+    // ─── SMS ─────────────────────────────────────────────────────────────────
+
+    public function smsBalances(): HasMany
+    {
+        return $this->hasMany(SmsBalance::class);
+    }
+
+    /**
+     * The SMS balance for the user's current active period.
+     * Returns null when they have never activated a plan.
+     */
+    public function activeSmsBalance(): HasOne
+    {
+        return $this->hasOne(SmsBalance::class)
+            ->where(function ($q) {
+                $q->whereNull('period_end')->orWhere('period_end', '>', now());
+            })
+            ->latestOfMany();
+    }
+
+    public function smsLogs(): HasMany
+    {
+        return $this->hasMany(SmsLog::class);
+    }
 }

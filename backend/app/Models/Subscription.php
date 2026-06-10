@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Subscription extends Model
 {
@@ -58,5 +59,13 @@ class Subscription extends Model
     public function scopeActive($query)
     {
         return $query->where('status', 'active')->where('expiry_date', '>', now());
+    }
+
+    // ─── SMS ─────────────────────────────────────────────────────────────────
+
+    /** The SMS balance created when this subscription was activated. */
+    public function smsBalance(): HasOne
+    {
+        return $this->hasOne(SmsBalance::class);
     }
 }

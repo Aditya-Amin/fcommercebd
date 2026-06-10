@@ -1,16 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { AlertTriangle, LogOut, RefreshCcw } from "lucide-react";
+import { AlertTriangle, LogOut, RefreshCcw, Phone } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { Modal } from "@/components/ui/Modal";
+import { Input } from "@/components/ui/Input";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
 import { startBkashCheckout } from "@/lib/api/bkash";
 import { formatBDT } from "@/lib/utils";
+
+const BD_PHONE_RE = /^01[3-9]\d{8}$/;
 
 function daysSince(iso: string | null): number | null {
   if (!iso) return null;
@@ -24,9 +28,23 @@ export default function SubscriptionExpiredPage() {
   const { user, logout } = useAuth();
   const { toast } = useToast();
   const [renewing, setRenewing] = useState(false);
+  const [phoneModalOpen, setPhoneModalOpen] = useState(false);
+  const [phone, setPhone] = useState("");
+  const [phoneError, setPhoneError] = useState<string | null>(null);
 
   const last = user?.lastSubscription ?? null;
   const expiredDays = daysSince(last?.expiresAt ?? null);
+
+  async function doCheckout(resolvedPhone: string) {
+    if (!last?.planDbId) return;
+    setRenewing(true);
+    try {
+      await startBkashCheckout(last.planDbId, resolvedPhone);
+    } catch (e) {
+      toast(e instanceof Error ? e.message : "Could not start bKash checkout.", "error");
+      setRenewing(false);
+    }
+  }
 
   async function handleRenew() {
     if (!last?.planDbId) {
@@ -34,13 +52,23 @@ export default function SubscriptionExpiredPage() {
       router.push("/pricing");
       return;
     }
-    setRenewing(true);
-    try {
-      await startBkashCheckout(last.planDbId);
-    } catch (e) {
-      toast(e instanceof Error ? e.message : "Could not start bKash checkout.", "error");
-      setRenewing(false);
+    if (!user?.phone) {
+      setPhoneModalOpen(true);
+      return;
     }
+    await doCheckout(user.phone);
+  }
+
+  async function handlePhoneSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!BD_PHONE_RE.test(phone)) {
+      setPhoneError("সঠিক বাংলাদেশি নম্বর দিন (যেমন: 01712345678)");
+      return;
+    }
+    setPhoneModalOpen(false);
+    setPhone("");
+    setPhoneError(null);
+    await doCheckout(phone);
   }
 
   async function handleLogout() {
@@ -49,6 +77,33 @@ export default function SubscriptionExpiredPage() {
   }
 
   return (
+    <div>
+    <Modal
+      open={phoneModalOpen}
+      onClose={() => { setPhoneModalOpen(false); setPhone(""); setPhoneError(null); }}
+      title="bKash নম্বর দিন"
+      description="পেমেন্টের জন্য আপনার bKash-সংযুক্ত মোবাইল নম্বর দিন।"
+      size="sm"
+    >
+      <form onSubmit={handlePhoneSubmit} className="space-y-4">
+        <Input
+          name="bkashPhone"
+          label="bKash নম্বর"
+          placeholder="01XXXXXXXXX"
+          value={phone}
+          onChange={(e) => { setPhone(e.target.value); setPhoneError(null); }}
+          leftIcon={<Phone className="h-4 w-4" />}
+          inputMode="numeric"
+          maxLength={11}
+          autoFocus
+          error={phoneError ?? undefined}
+          required
+        />
+        <Button type="submit" fullWidth size="lg">
+          পেমেন্টে যান
+        </Button>
+      </form>
+    </Modal>
     <div className="mx-auto max-w-2xl space-y-6">
       <div className="flex items-start gap-3 rounded-2xl border border-warning/40 bg-warning/5 p-5">
         <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-warning/15 text-warning">
@@ -118,6 +173,7 @@ export default function SubscriptionExpiredPage() {
           Sign out
         </Button>
       </div>
+    </div>
     </div>
   );
 }

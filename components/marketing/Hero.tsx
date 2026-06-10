@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Sparkles, ShieldCheck } from "lucide-react";
+import { ArrowRight, Sparkles, ShieldCheck, Wand2, ImagePlus, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import type { HeroContent, HeroPreviewContent } from "@/lib/types/marketing";
 
@@ -87,7 +87,7 @@ function HeroPreview({ preview }: { preview: HeroPreviewContent }) {
           ))}
         </div>
 
-        <div className="mt-4 rounded-xl border border-border p-3">
+        <div className="mt-4 rounded-xl border border-border p-3 ASD">
           <div className="flex items-center justify-between">
             <p className="text-sm font-semibold text-ink">{preview.aiCardTitle}</p>
             <span className="rounded-full bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary">
@@ -105,9 +105,15 @@ function HeroPreview({ preview }: { preview: HeroPreviewContent }) {
         </div>
 
         <div className="mt-3 flex gap-2">
-          <div className="h-9 flex-1 rounded-lg bg-primary" />
-          <div className="h-9 w-9 rounded-lg border border-border" />
-          <div className="h-9 w-9 rounded-lg border border-border" />
+          <div className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-primary text-xs font-medium text-white">
+            <Wand2 className="h-3.5 w-3.5" /> পোস্ট তৈরি করুন
+          </div>
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-bg text-ink-muted">
+            <ImagePlus className="h-4 w-4" />
+          </div>
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-bg text-ink-muted">
+            <Share2 className="h-4 w-4" />
+          </div>
         </div>
       </div>
     </div>

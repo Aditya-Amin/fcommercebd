@@ -22,7 +22,7 @@ export function CTA({ content }: { content: CtaContent }) {
               <Link href={content.primaryCta.href}>
                 <Button
                   size="lg"
-                  className="bg-white text-primary hover:bg-white/90"
+                  className="bg-white/15 hover:bg-white/25 text-white border border-white/50 hover:border-white/90 font-medium px-6 py-3 rounded-lg transition duration-200"
                   rightIcon={<ArrowRight className="h-4 w-4" />}
                 >
                   {content.primaryCta.label}
@@ -32,7 +32,7 @@ export function CTA({ content }: { content: CtaContent }) {
                 <Button
                   size="lg"
                   variant="outline"
-                  className="border-white/30 bg-transparent text-white hover:bg-white/10 hover:border-white/50"
+                  className="bg-white/15 hover:bg-white/25 text-white border border-white/50 hover:border-white/90 font-medium px-6 py-3 rounded-lg transition duration-200"
                 >
                   {content.secondaryCta.label}
                 </Button>

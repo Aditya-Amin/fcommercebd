@@ -1,12 +1,15 @@
 <?php
 
+use App\Http\Controllers\Admin\PurchasesController;
 use App\Http\Controllers\Api\AiGenerateController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BkashController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\FacebookController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\PackageController;
 use App\Http\Controllers\Api\ProductController;
+use App\Http\Controllers\Api\SmsController;
 use App\Http\Controllers\Api\SteadfastController;
 use App\Http\Controllers\Api\SubscriptionController;
 use Illuminate\Support\Facades\Route;
@@ -101,8 +104,26 @@ Route::middleware(['auth:sanctum', 'subscription.active'])->group(function () {
     Route::post('/steadfast/consignments/{invoice}/sync-status',    [SteadfastController::class, 'syncStatus']);
 });
 
+// ── SMS usage (auth required; SmsBalanceService handles quota internally) ─────
+Route::middleware('auth:sanctum')->prefix('user/sms')->group(function () {
+    Route::get('/stats', [SmsController::class, 'stats']);   // quota card data
+    Route::post('/send',  [SmsController::class, 'send']);   // deduct + dispatch
+    Route::get('/log',    [SmsController::class, 'log']);    // recent send history
+});
+
+// ── Dev-only package activation (local env guard inside controller) ───────────
+// Lets the /test/activate-package page bypass bKash for quick testing.
+Route::middleware('auth:sanctum')->prefix('dev')->group(function () {
+    Route::get('/packages',          [PackageController::class, 'index']);
+    Route::post('/activate-package', [PackageController::class, 'activate']);
+});
+
 // Admin-only (gate with your real admin middleware in production)
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/bkash/token',  [BkashController::class, 'token']);   // debug
     Route::post('/bkash/refund', [BkashController::class, 'refund']);
+
+    // Purchase dashboard — lists all transactions with user + plan + subscription data
+    Route::get('/admin/purchases',         [PurchasesController::class, 'index']);
+    Route::get('/admin/purchases/summary', [PurchasesController::class, 'summary']);
 });

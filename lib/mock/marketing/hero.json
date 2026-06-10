@@ -17,7 +17,7 @@
     "liveLabel": "● লাইভ",
     "stats": [
       { "label": "অর্ডার", "value": "১২৮", "delta": "+১২%" },
-      { "label": "আয়", "value": "৳৬২হাজার", "delta": "+৮%" },
+      { "label": "আয়", "value": "৳৬২ হাজার", "delta": "+৮%" },
       { "label": "AI পোস্ট", "value": "২৪", "delta": "+৪০%" }
     ],
     "aiCardTitle": "AI পোস্ট তৈরি করুন",

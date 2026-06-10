@@ -41,12 +41,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-ink">Settings</h1>
-        <p className="text-sm text-ink-muted">Manage your profile, plan, and demo controls.</p>
-      </div>
-
+    <div className="space-y-6">
       {/* Profile */}
       <Card>
         <CardHeader title="Profile" description="Your business and contact details." />
@@ -138,3 +133,4 @@ export default function SettingsPage() {
     </div>
   );
 }
+

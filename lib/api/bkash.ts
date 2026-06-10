@@ -64,7 +64,7 @@ async function jsonOrThrow<T>(res: Response): Promise<T> {
   return body as T;
 }
 
-export async function createBkashPayment(planId: number): Promise<CreatePaymentResponse> {
+export async function createBkashPayment(planId: number, phone?: string): Promise<CreatePaymentResponse> {
   if (USE_MOCK_API) {
     const plans = await getPlans();
     const plan = plans.find((p) => p.id === planId);
@@ -96,7 +96,7 @@ export async function createBkashPayment(planId: number): Promise<CreatePaymentR
       ...authHeaders()
     },
     credentials: "include",
-    body: JSON.stringify({ plan_id: planId })
+    body: JSON.stringify({ plan_id: planId, ...(phone ? { phone } : {}) })
   });
   return jsonOrThrow<CreatePaymentResponse>(res);
 }
@@ -253,8 +253,8 @@ export async function getActiveSubscription(): Promise<SubscriptionPayload | nul
  * Convenience: kick off a payment and redirect the browser to the bKash hosted page.
  * Throws if the Laravel call fails so the caller can show an error.
  */
-export async function startBkashCheckout(planId: number): Promise<void> {
-  const { bkashURL } = await createBkashPayment(planId);
+export async function startBkashCheckout(planId: number, phone?: string): Promise<void> {
+  const { bkashURL } = await createBkashPayment(planId, phone);
   if (!bkashURL) throw new Error("bKash did not return a redirect URL");
   window.location.href = bkashURL;
 }
