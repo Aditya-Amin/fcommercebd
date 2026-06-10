@@ -61,6 +61,7 @@ export interface Order {
   trackingCode?: string;
   steadfastStatus?: string;
   deliveryAddress?: string;
+  note?: string;
 }
 
 export interface SteadfastCredentials {

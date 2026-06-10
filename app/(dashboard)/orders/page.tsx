@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Search, Phone, Truck, Navigation, ExternalLink, Settings2, PlusCircle } from "lucide-react";
+import { Search, Phone, Truck, Navigation, ExternalLink, Settings2, PlusCircle, Pencil } from "lucide-react";
 import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { Input, Select } from "@/components/ui/Input";
@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/Button";
 import { SteadfastBookingModal } from "@/components/dashboard/SteadfastBookingModal";
 import { SteadfastTrackModal } from "@/components/dashboard/SteadfastTrackModal";
 import { CreateOrderModal } from "@/components/dashboard/CreateOrderModal";
+import { EditOrderModal } from "@/components/dashboard/EditOrderModal";
 import { useSteadfast } from "@/context/SteadfastContext";
 import { useToast } from "@/context/ToastContext";
 import { useAuth } from "@/context/AuthContext";
@@ -93,6 +94,9 @@ export default function OrdersPage() {
 
   // Create order modal state
   const [createOpen, setCreateOpen] = useState(false);
+
+  // Edit order modal state
+  const [editOrder, setEditOrder] = useState<Order | null>(null);
 
   // Steadfast modal state
   const [bookingOrder, setBookingOrder] = useState<Order | null>(null);
@@ -185,6 +189,10 @@ export default function OrdersPage() {
           : x
       )
     );
+  }
+
+  function handleOrderSaved(updated: Order) {
+    setOrders((prev) => prev.map((x) => (x.id === updated.id ? updated : x)));
   }
 
   function openTrack(o: Order) {
@@ -353,6 +361,15 @@ export default function OrdersPage() {
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex items-center justify-end gap-2">
+                        {/* Edit */}
+                        <button
+                          onClick={() => setEditOrder(o)}
+                          className="rounded-lg p-1.5 text-ink-subtle transition hover:bg-border hover:text-ink"
+                          title="Edit order"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+
                         {/* Confirm pending */}
                         {o.status === "pending" && (
                           <Button size="sm" variant="outline" onClick={() => advance(o)}>
@@ -440,6 +457,13 @@ export default function OrdersPage() {
                 <div className="mt-3 flex items-center justify-between gap-2">
                   <span className="font-semibold text-ink">{formatBDT(o.amount)}</span>
                   <div className="flex gap-1.5">
+                    <button
+                      onClick={() => setEditOrder(o)}
+                      className="rounded-lg p-1.5 text-ink-subtle transition hover:bg-border hover:text-ink"
+                      title="Edit order"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </button>
                     {o.status === "pending" && (
                       <Button size="sm" variant="outline" onClick={() => advance(o)}>
                         Confirm
@@ -482,6 +506,14 @@ export default function OrdersPage() {
           </div>
         )}
       </Card>
+
+      {/* Edit order modal */}
+      <EditOrderModal
+        open={!!editOrder}
+        onClose={() => setEditOrder(null)}
+        order={editOrder}
+        onSaved={handleOrderSaved}
+      />
 
       {/* Create order modal */}
       <CreateOrderModal

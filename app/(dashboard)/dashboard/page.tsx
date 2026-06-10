@@ -78,7 +78,7 @@ export default function DashboardHomePage() {
     (o) => new Date(o.createdAt).getTime() >= monthStart
   );
   const monthlyRevenue = ordersThisMonth
-    .filter((o) => o.status === "delivered")
+    .filter((o) => o.status !== "pending" && o.status !== "cancelled")
     .reduce((sum, o) => sum + (o.amount ?? 0), 0);
 
   return (
