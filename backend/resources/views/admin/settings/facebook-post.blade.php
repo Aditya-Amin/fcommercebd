@@ -15,6 +15,35 @@
             </div>
         @endif
 
+        {{-- ── AI provider health: surfaced from the last real generation attempt ── --}}
+        @php
+            $aiStatus  = $settings['ai_status'] ?? null;
+            $aiStatusMsg = $settings['ai_status_message'] ?? null;
+            $aiStatusAt  = $settings['ai_status_at'] ?? null;
+            $statusMeta = [
+                'limit_reached' => ['icon' => 'fa-circle-exclamation', 'title' => 'AI limit reached', 'detail' => 'Your AI provider rejected the last request because the account credit/quota is exhausted. Customers currently cannot generate posts. Top up credits at your provider, then generation resumes automatically.'],
+                'rate_limited'  => ['icon' => 'fa-gauge-high',         'title' => 'AI provider rate limited', 'detail' => 'The provider is throttling requests. This usually clears on its own within a few minutes.'],
+                'auth_error'    => ['icon' => 'fa-key',                'title' => 'AI key problem', 'detail' => 'The provider rejected the API key (missing, invalid, or revoked). Re-check the key above.'],
+            ];
+        @endphp
+        @if($aiStatus && isset($statusMeta[$aiStatus]))
+            @php $m = $statusMeta[$aiStatus]; @endphp
+            <div class="flex items-start gap-3 rounded-xl bg-red-900/30 border border-red-700/50 px-4 py-3 text-sm text-red-300">
+                <i class="fa-solid {{ $m['icon'] }} mt-0.5"></i>
+                <div>
+                    <p class="font-semibold text-red-200">{{ $m['title'] }}</p>
+                    <p class="mt-0.5 text-red-300/90">{{ $m['detail'] }}</p>
+                    @if($aiStatusAt)
+                        <p class="mt-1 text-xs text-red-400/70">Last checked: {{ \Illuminate\Support\Carbon::parse($aiStatusAt)->diffForHumans() }}</p>
+                    @endif
+                </div>
+            </div>
+        @elseif($aiStatus === 'ok' && ($settings['provider'] ?? 'stub') !== 'stub')
+            <div class="flex items-center gap-3 rounded-xl bg-green-900/20 border border-green-700/40 px-4 py-3 text-sm text-green-300/90">
+                <i class="fa-solid fa-circle-check"></i> AI provider responded normally on the last generation.
+            </div>
+        @endif
+
         <form method="POST" action="{{ route('admin.settings.facebook-post.save') }}">
             @csrf
 
@@ -101,7 +130,8 @@
                     <label class="cursor-pointer flex items-start gap-3 rounded-xl border-2 p-4 transition
                         {{ $selectedModel === $m['id'] ? 'border-violet-500 bg-violet-500/10' : 'border-gray-600 hover:border-violet-500/50' }}">
                         <input type="radio" name="ai_model" value="{{ $m['id'] }}" class="mt-1 accent-violet-500"
-                               {{ $selectedModel === $m['id'] ? 'checked' : '' }}>
+                               {{ $selectedModel === $m['id'] ? 'checked' : '' }}
+                               {{ $selectedProvider === $pid ? '' : 'disabled' }}>
                         <div class="flex-1">
                             <div class="flex items-center gap-2">
                                 <span class="text-sm font-semibold text-white">{{ $m['name'] }}</span>
@@ -113,7 +143,7 @@
                     @endforeach
                     @if(count($models) === 0)
                     <p class="text-xs text-gray-500 py-2">No model selection needed for Stub mode.</p>
-                    <input type="hidden" name="ai_model" value="stub">
+                    <input type="hidden" name="ai_model" value="stub" {{ $selectedProvider === $pid ? '' : 'disabled' }}>
                     @endif
                 </div>
                 @endforeach
@@ -215,12 +245,21 @@
             // show correct model group
             document.querySelectorAll('.model-group').forEach(function (el) {
                 el.classList.add('hidden');
-                // uncheck radios in hidden groups so they don't interfere
-                el.querySelectorAll('input[type="radio"]').forEach(function(r){ r.checked = false; });
+                // uncheck + disable inputs in hidden groups so they never submit
+                // (disabled fields are excluded from the POST body — otherwise the
+                //  hidden stub input would clobber the real ai_model selection)
+                el.querySelectorAll('input[name="ai_model"]').forEach(function (r) {
+                    if (r.type === 'radio') r.checked = false;
+                    r.disabled = true;
+                });
             });
             const activeGroup = document.querySelector('.model-group[data-provider="' + pid + '"]');
             if (activeGroup) {
                 activeGroup.classList.remove('hidden');
+                // re-enable this group's inputs so the chosen model is submitted
+                activeGroup.querySelectorAll('input[name="ai_model"]').forEach(function (r) {
+                    r.disabled = false;
+                });
                 // auto-select first model if none checked
                 const first = activeGroup.querySelector('input[type="radio"]');
                 if (first && !activeGroup.querySelector('input[type="radio"]:checked')) first.checked = true;

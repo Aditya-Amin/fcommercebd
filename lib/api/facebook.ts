@@ -275,6 +275,23 @@ export async function getFbPostsQuota(): Promise<FbPostsQuota> {
   return body.data;
 }
 
+/**
+ * Current-period AI-generation usage + remaining for the logged-in user.
+ * Backend-tracked (ai_generations table); mock mode mirrors PlanContext.
+ */
+export async function getAiUsage(): Promise<FbPostsQuota> {
+  if (USE_MOCK_API) {
+    await delay(80);
+    return readMockAiUsage();
+  }
+  const res = await fetch(`${LARAVEL_API_URL}/api/ai/usage`, {
+    headers: { Accept: "application/json", ...authHeaders() },
+    credentials: "include"
+  });
+  const body = await jsonOrThrow<{ data: FbPostsQuota }>(res);
+  return body.data;
+}
+
 export async function cancelFacebookPost(id: string): Promise<void> {
   if (USE_MOCK_API) {
     await delay(150);
@@ -391,6 +408,35 @@ function readMockQuota(): FbPostsQuota {
   }
 
   // Calendar-month reset for mock mode (no subscription window to consult).
+  const next = new Date();
+  next.setDate(1);
+  next.setHours(0, 0, 0, 0);
+  next.setMonth(next.getMonth() + 1);
+
+  return {
+    limit,
+    used,
+    remaining: Math.max(0, limit - used),
+    resetsAt: next.toISOString(),
+    locked: limit === 0
+  };
+}
+
+function readMockAiUsage(): FbPostsQuota {
+  if (typeof window === "undefined") {
+    return { limit: 0, used: 0, remaining: 0, resetsAt: new Date().toISOString(), locked: true };
+  }
+  const planId = (window.localStorage.getItem(PLAN_KEY) as PlanId | null) ?? "growth";
+  const limit = PLANS[planId]?.limits.aiGenerations ?? 0;
+
+  let used = 0;
+  try {
+    const u = window.localStorage.getItem(USAGE_KEY);
+    if (u) used = (JSON.parse(u) as Partial<UsageStats>).aiUsed ?? 0;
+  } catch {
+    /* ignore */
+  }
+
   const next = new Date();
   next.setDate(1);
   next.setHours(0, 0, 0, 0);

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
   Wand2,
   Sparkles,
@@ -24,9 +24,15 @@ import { ProductPicker } from "@/components/facebook/ProductPicker";
 import { PostPreview } from "@/components/facebook/PostPreview";
 import { usePlan } from "@/context/PlanContext";
 import { useToast } from "@/context/ToastContext";
-import { generateAiPost, getFacebookPages, createFacebookPost } from "@/lib/api/facebook";
+import {
+  generateAiPost,
+  getFacebookPages,
+  createFacebookPost,
+  getFbPostsQuota,
+  getAiUsage
+} from "@/lib/api/facebook";
 import type { Product } from "@/lib/types/product";
-import type { AiGenerateResult, FacebookPage } from "@/lib/types/facebook";
+import type { AiGenerateResult, FacebookPage, FbPostsQuota } from "@/lib/types/facebook";
 
 const TONES = [
   { label: "Friendly & casual", value: "friendly" as const },
@@ -45,15 +51,7 @@ type Tone = (typeof TONES)[number]["value"];
 type Language = (typeof LANGUAGES)[number]["value"];
 
 export default function AIGeneratePage() {
-  const {
-    plan,
-    usage,
-    canUseAI,
-    canCreateFBPost,
-    fbPostsRemaining,
-    recordAIUse,
-    recordFBPostUse
-  } = usePlan();
+  const { recordAIUse, recordFBPostUse } = usePlan();
   const { toast } = useToast();
 
   const [product, setProduct] = useState<Product | null>(null);
@@ -64,22 +62,40 @@ export default function AIGeneratePage() {
   const [generating, setGenerating] = useState(false);
   const [posting, setPosting] = useState(false);
   const [asset, setAsset] = useState<AiGenerateResult | null>(null);
+  const [genError, setGenError] = useState<string | null>(null);
 
   const [pages, setPages] = useState<FacebookPage[]>([]);
   const [pageId, setPageId] = useState<string>("");
   const [scheduleAt, setScheduleAt] = useState("");
 
+  // FB-post + AI-generation quotas come from the server (PlanQuotaService) so
+  // admin overrides/resets reflect immediately — not the local PlanContext cache.
+  const [fbQuota, setFbQuota] = useState<FbPostsQuota | null>(null);
+  const [aiUsage, setAiUsage] = useState<FbPostsQuota | null>(null);
+  const refreshFbQuota = useCallback(() => {
+    getFbPostsQuota().then(setFbQuota).catch(() => {});
+  }, []);
+  const refreshAiUsage = useCallback(() => {
+    getAiUsage().then(setAiUsage).catch(() => {});
+  }, []);
+
   // editable preview
   const [caption, setCaption] = useState("");
   const [hashtags, setHashtags] = useState("");
 
-  const isLocked = plan.limits.aiGenerations === 0;
-  const limitReached = !isLocked && !canUseAI();
+  // AI-generation quota — server values only. While the API is in flight
+  // (aiUsage === null) we show nothing rather than stale localStorage numbers.
+  const aiLimit = aiUsage?.limit ?? 0;
+  const aiUsedCount = aiUsage?.used ?? 0;
+  const isLocked = aiUsage?.locked ?? false;
+  const limitReached = aiUsage ? (!aiUsage.locked && aiUsage.remaining <= 0) : false;
 
-  // Facebook-posting plan quota (separate from AI quota)
-  const fbLocked = plan.limits.fbPosts === 0;
-  const fbLimitReached = !fbLocked && !canCreateFBPost();
-  const fbRemaining = fbPostsRemaining();
+  // Facebook-posting quota — server values only.
+  const fbLimit = fbQuota?.limit ?? 0;
+  const fbUsed = fbQuota?.used ?? 0;
+  const fbLocked = fbQuota?.locked ?? false;
+  const fbRemaining = fbQuota?.remaining ?? 0;
+  const fbLimitReached = fbQuota ? (!fbQuota.locked && fbQuota.remaining <= 0) : false;
 
   useEffect(() => {
     getFacebookPages()
@@ -91,7 +107,9 @@ export default function AIGeneratePage() {
       .catch(() => {
         /* non-blocking */
       });
-  }, []);
+    refreshFbQuota();
+    refreshAiUsage();
+  }, [refreshFbQuota, refreshAiUsage]);
 
   // When AI generates, mirror into editable fields.
   useEffect(() => {
@@ -117,6 +135,7 @@ export default function AIGeneratePage() {
 
     setGenerating(true);
     setAsset(null);
+    setGenError(null);
     try {
       const result = await generateAiPost({
         product_id: product.id,
@@ -126,9 +145,12 @@ export default function AIGeneratePage() {
       });
       setAsset(result);
       recordAIUse();
+      refreshAiUsage();
+      window.dispatchEvent(new Event("usage:changed")); // update the sidebar meter live
       toast("AI post generated!", "success");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Generation failed";
+      setGenError(msg);
       toast(msg, "error");
     } finally {
       setGenerating(false);
@@ -158,7 +180,7 @@ export default function AIGeneratePage() {
     }
     if (fbLimitReached) {
       toast(
-        `Monthly Facebook post limit reached (${usage.fbPostsUsed}/${plan.limits.fbPosts}).`,
+        `Monthly Facebook post limit reached (${fbUsed}/${fbLimit}).`,
         "error"
       );
       return;
@@ -182,6 +204,7 @@ export default function AIGeneratePage() {
         scheduled_at: scheduleAt || undefined
       });
       recordFBPostUse();
+      refreshFbQuota();
       toast(
         scheduleAt
           ? "Post scheduled — it will publish at the chosen time."
@@ -216,16 +239,16 @@ export default function AIGeneratePage() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          {plan.limits.aiGenerations > 0 && (
+          {aiLimit > 0 && (
             <div className="rounded-xl border border-border bg-white px-4 py-2.5">
               <p className="text-xs font-medium text-ink-muted">AI this month</p>
               <p className="text-sm font-semibold text-ink">
-                {usage.aiUsed}
-                <span className="text-ink-muted"> / {plan.limits.aiGenerations}</span>
+                {aiUsedCount}
+                <span className="text-ink-muted"> / {aiLimit}</span>
               </p>
             </div>
           )}
-          {plan.limits.fbPosts > 0 && (
+          {fbLimit > 0 && (
             <div
               className={
                 "rounded-xl border px-4 py-2.5 " +
@@ -238,8 +261,8 @@ export default function AIGeneratePage() {
             >
               <p className="text-xs font-medium text-ink-muted">FB posts this month</p>
               <p className="text-sm font-semibold text-ink">
-                {usage.fbPostsUsed}
-                <span className="text-ink-muted"> / {plan.limits.fbPosts}</span>
+                {fbUsed}
+                <span className="text-ink-muted"> / {fbLimit}</span>
               </p>
             </div>
           )}
@@ -317,12 +340,12 @@ export default function AIGeneratePage() {
                 Include hashtags
               </label>
 
-              {plan.limits.aiGenerations > 0 && (
+              {aiLimit > 0 && (
                 <ProgressBar
-                  value={usage.aiUsed}
-                  max={plan.limits.aiGenerations}
+                  value={aiUsedCount}
+                  max={aiLimit}
                   label="AI generations this month"
-                  hint={`${usage.aiUsed} / ${plan.limits.aiGenerations}`}
+                  hint={`${aiUsedCount} / ${aiLimit}`}
                 />
               )}
 
@@ -344,6 +367,16 @@ export default function AIGeneratePage() {
                         ? "Generating…"
                         : "Generate AI post"}
               </Button>
+
+              {genError && (
+                <div className="flex items-start gap-2 rounded-lg border border-danger/30 bg-danger/5 p-3 text-xs text-ink">
+                  <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
+                  <div>
+                    <p className="font-semibold">AI generation unavailable</p>
+                    <p className="mt-0.5 text-ink-muted">{genError}</p>
+                  </div>
+                </div>
+              )}
             </div>
           </Card>
         </div>
@@ -467,10 +500,10 @@ export default function AIGeneratePage() {
                   </div>
                 )}
 
-                {plan.limits.fbPosts > 0 && (
+                {fbLimit > 0 && (
                   <ProgressBar
-                    value={usage.fbPostsUsed}
-                    max={plan.limits.fbPosts}
+                    value={fbUsed}
+                    max={fbLimit}
                     label="Facebook posts this month"
                     hint={
                       fbLimitReached
@@ -486,7 +519,7 @@ export default function AIGeneratePage() {
                     <div>
                       <p className="font-semibold">Monthly Facebook post limit reached</p>
                       <p className="mt-0.5 text-ink-muted">
-                        You've used {usage.fbPostsUsed}/{plan.limits.fbPosts} posts.{" "}
+                        You've used {fbUsed}/{fbLimit} posts.{" "}
                         <Link href="/settings" className="font-semibold text-primary hover:underline">
                           Upgrade
                         </Link>{" "}

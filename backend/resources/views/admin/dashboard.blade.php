@@ -5,6 +5,26 @@
 
 @section('content')
 
+{{-- AI provider health banner (Facebook post generation) --}}
+@if(in_array($aiStatus ?? null, ['limit_reached', 'rate_limited', 'auth_error'], true))
+    @php
+        $aiBanner = [
+            'limit_reached' => ['icon' => 'fa-circle-exclamation', 'label' => 'AI limit reached', 'text' => 'Facebook post generation is failing — the AI provider account is out of credit/quota. Customers see "try again later". Top up credits to restore it.'],
+            'rate_limited'  => ['icon' => 'fa-gauge-high',         'label' => 'AI rate limited',  'text' => 'The AI provider is throttling requests. This usually clears within a few minutes.'],
+            'auth_error'    => ['icon' => 'fa-key',                'label' => 'AI key problem',   'text' => 'The AI provider rejected the API key. Check it under Model Settings → Facebook Post.'],
+        ][$aiStatus];
+    @endphp
+    <a href="{{ route('admin.settings.facebook-post') }}"
+       class="flex items-start gap-3 rounded-xl bg-red-900/30 border border-red-700/50 px-4 py-3 mb-6 text-sm text-red-300 hover:bg-red-900/40 transition">
+        <i class="fa-solid {{ $aiBanner['icon'] }} mt-0.5"></i>
+        <div class="flex-1">
+            <p class="font-semibold text-red-200">{{ $aiBanner['label'] }}</p>
+            <p class="mt-0.5 text-red-300/90">{{ $aiBanner['text'] }}</p>
+        </div>
+        <i class="fa-solid fa-arrow-right mt-0.5 text-red-400/70"></i>
+    </a>
+@endif
+
 {{-- Stats Cards --}}
 <div class="grid grid-cols-4 gap-4 mb-6">
     <div class="card p-5 flex items-center gap-4">

@@ -2,6 +2,7 @@
 
 namespace App\Services\Plans;
 
+use App\Models\AiGeneration;
 use App\Models\FacebookPost;
 use App\Models\Plan;
 use App\Models\Subscription;
@@ -20,17 +21,20 @@ use Carbon\CarbonImmutable;
  */
 class PlanQuotaService
 {
-    public function __construct(private readonly ?Plan $defaultPlan = null) {}
-
     /**
-     * Resolve the user's effective plan: latest active subscription's plan,
-     * else the default Starter plan as fallback.
+     * Resolve the user's effective plan: the plan of their active subscription
+     * (paid OR trial). Returns null when there's no active subscription — i.e.
+     * the trial/plan expired — which means every quota resolves to 0 (locked).
+     *
+     * NOTE: there is intentionally NO "default Starter" fallback. A user only
+     * gets quota while they hold an active or trial subscription; once it
+     * expires, features lock until an admin or a payment activates a new one.
      */
     public function planFor(User $user): ?Plan
     {
         $sub = $this->activeSubscription($user);
         if ($sub && $sub->plan) return $sub->plan;
-        return $this->defaultPlan ?? Plan::where('slug', 'starter')->first();
+        return null;
     }
 
     public function activeSubscription(User $user): ?Subscription
@@ -68,8 +72,29 @@ class PlanQuotaService
 
     public function fbPostsLimit(User $user): int
     {
+        // Admin per-user override wins over the plan default (raise or lower a
+        // single customer's cap from the user-activity screen).
+        if ($user->fb_posts_limit_override !== null) {
+            return (int) $user->fb_posts_limit_override;
+        }
+
         $plan = $this->planFor($user);
         return (int) ($plan?->limit('fbPosts') ?? 0);
+    }
+
+    /**
+     * Lower bound for counting usage in the current period. Normally the period
+     * start, but an admin "reset" (fb_posts_reset_at) pushes it forward so prior
+     * posts no longer count — giving the customer a fresh allowance without
+     * deleting their post history.
+     */
+    private function usageSince(User $user, CarbonImmutable $periodStart): CarbonImmutable
+    {
+        $resetAt = $user->fb_posts_reset_at;
+        if ($resetAt && CarbonImmutable::parse($resetAt)->greaterThan($periodStart)) {
+            return CarbonImmutable::parse($resetAt);
+        }
+        return $periodStart;
     }
 
     /**
@@ -80,6 +105,7 @@ class PlanQuotaService
     public function fbPostsUsed(User $user): int
     {
         $period = $this->currentPeriod($user);
+        $start  = $this->usageSince($user, $period['start']);
 
         return FacebookPost::query()
             ->where('user_id', $user->id)
@@ -89,7 +115,7 @@ class PlanQuotaService
                 FacebookPost::STATUS_PUBLISHING,
                 FacebookPost::STATUS_PUBLISHED,
             ])
-            ->whereBetween('created_at', [$period['start'], $period['end']])
+            ->whereBetween('created_at', [$start, $period['end']])
             ->count();
     }
 
@@ -114,6 +140,61 @@ class PlanQuotaService
     {
         $limit  = $this->fbPostsLimit($user);
         $used   = $this->fbPostsUsed($user);
+        $period = $this->currentPeriod($user);
+
+        return [
+            'limit'     => $limit,
+            'used'      => $used,
+            'remaining' => max(0, $limit - $used),
+            'resetsAt'  => $period['end']->toIso8601String(),
+            'locked'    => $limit === 0,
+        ];
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // AI generations
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function aiGenerationsLimit(User $user): int
+    {
+        if ($user->ai_generations_limit_override !== null) {
+            return (int) $user->ai_generations_limit_override;
+        }
+
+        $plan = $this->planFor($user);
+        return (int) ($plan?->limit('aiGenerations') ?? 0);
+    }
+
+    public function aiGenerationsUsed(User $user): int
+    {
+        $period = $this->currentPeriod($user);
+
+        $start = $period['start'];
+        $resetAt = $user->ai_generations_reset_at;
+        if ($resetAt && CarbonImmutable::parse($resetAt)->greaterThan($start)) {
+            $start = CarbonImmutable::parse($resetAt);
+        }
+
+        return AiGeneration::query()
+            ->where('user_id', $user->id)
+            ->whereBetween('created_at', [$start, $period['end']])
+            ->count();
+    }
+
+    public function canGenerate(User $user): bool
+    {
+        $limit = $this->aiGenerationsLimit($user);
+        if ($limit <= 0) return false; // 0 = feature locked
+        return $this->aiGenerationsUsed($user) < $limit;
+    }
+
+    /**
+     * @return array{limit:int, used:int, remaining:int, resetsAt:string, locked:bool}
+     */
+    public function aiGenerationsStatus(User $user): array
+    {
+        $limit  = $this->aiGenerationsLimit($user);
+        $used   = $this->aiGenerationsUsed($user);
         $period = $this->currentPeriod($user);
 
         return [
