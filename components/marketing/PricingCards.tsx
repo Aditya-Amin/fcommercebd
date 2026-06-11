@@ -7,7 +7,8 @@ import { Button } from "@/components/ui/Button";
 import { PLAN_LIST } from "@/lib/plans";
 import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
-import { startBkashCheckout, getPlanIdBySlug } from "@/lib/api/bkash";
+import { getPlanIdBySlug } from "@/lib/api/bkash";
+import { startSslCommerzCheckout } from "@/lib/api/sslcommerz";
 import { cn } from "@/lib/utils";
 import type { PricingSectionContent } from "@/lib/types/marketing";
 import type { BkashCopy } from "@/lib/types/payment-copy";
@@ -35,8 +36,8 @@ export function PricingCards({ compact = false, labels }: Props) {
     setPendingPlan(planSlug);
     try {
       const planId = await getPlanIdBySlug(planSlug);
-      await startBkashCheckout(planId);
-      // The browser navigates away to bkashURL — no further code runs here.
+      await startSslCommerzCheckout(planId);
+      // The browser navigates away to SSLCommerz gateway — no further code runs here.
     } catch (err) {
       const msg = err instanceof Error ? err.message : "পেমেন্ট শুরু করা যায়নি";
       toast(msg, "error");
@@ -92,7 +93,7 @@ export function PricingCards({ compact = false, labels }: Props) {
               leftIcon={isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : undefined}
             >
               {isPending
-                ? "bKash-এ যাচ্ছে…"
+                ? "পেমেন্ট পেজে যাচ্ছে…"
                 : p.highlight
                   ? labels.growthCtaLabel
                   : labels.starterCtaLabel}

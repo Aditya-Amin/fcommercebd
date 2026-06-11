@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\PurchasesController;
 use App\Http\Controllers\Api\AiGenerateController;
+use App\Http\Controllers\Api\SslCommerzController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BkashController;
 use App\Http\Controllers\Api\CategoryController;
@@ -58,6 +59,9 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/bkash/create-payment',  [BkashController::class, 'createPayment']);
     Route::post('/bkash/execute-payment', [BkashController::class, 'executePayment']);
     Route::post('/bkash/query-payment',   [BkashController::class, 'queryPayment']);
+
+    // SSLCommerz — initiate payment (callbacks come via web routes, not API)
+    Route::post('/sslcommerz/initiate', [SslCommerzController::class, 'initiate']);
 
     Route::get('/subscriptions',         [SubscriptionController::class, 'index']);
     Route::get('/subscriptions/active',  [SubscriptionController::class, 'active']);

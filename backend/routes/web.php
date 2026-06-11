@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Api\BkashController;
+use App\Http\Controllers\Api\SslCommerzController;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -26,6 +27,15 @@ Route::middleware('throttle:60,1')->group(function () {
     Route::get('/bkash/simulate',         [BkashController::class, 'simulateShow'])->name('bkash.simulate.show');
     Route::get('/bkash/simulate/success', [BkashController::class, 'simulateSuccess'])->name('bkash.simulate.success');
     Route::get('/bkash/simulate/failure', [BkashController::class, 'simulateFailure'])->name('bkash.simulate.failure');
+});
+
+// SSLCommerz callbacks — SSLCommerz POSTs to these after payment
+// CSRF is excluded for these in VerifyCsrfToken middleware
+Route::prefix('sslcommerz')->name('sslcommerz.')->middleware('throttle:60,1')->group(function () {
+    Route::post('/success', [SslCommerzController::class, 'success'])->name('success');
+    Route::post('/fail',    [SslCommerzController::class, 'fail'])->name('fail');
+    Route::post('/cancel',  [SslCommerzController::class, 'cancel'])->name('cancel');
+    Route::post('/ipn',     [SslCommerzController::class, 'ipn'])->name('ipn');
 });
 
 // Admin Dashboard
