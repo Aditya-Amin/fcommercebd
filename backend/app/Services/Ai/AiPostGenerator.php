@@ -2,6 +2,7 @@
 
 namespace App\Services\Ai;
 
+use App\Exceptions\AiUnavailableException;
 use App\Models\Product;
 use App\Models\Setting;
 use GuzzleHttp\Client;
@@ -38,25 +39,114 @@ class AiPostGenerator
         $apiKey   = (string) (Setting::get('facebook_post.api_key')  ?: config('facebook.ai.api_key', ''));
         $model    = (string) (Setting::get('facebook_post.ai_model') ?: config('facebook.ai.model', ''));
 
+        // Stub provider: deterministic local template, no external call.
+        if ($provider === 'stub') {
+            $this->recordStatus('ok', null);
+            return $this->generateWithStub($product, $tone, $language, $withTags);
+        }
+
+        // Real provider selected but no key configured — that's an admin
+        // misconfiguration. Flag it for the admin but still serve a caption
+        // (don't hard-fail the customer just because the key is missing).
+        if ($apiKey === '') {
+            $this->recordStatus('auth_error', 'No API key is configured for the selected AI provider.');
+            return $this->generateWithStub($product, $tone, $language, $withTags);
+        }
+
         try {
-            if ($provider === 'anthropic' && $apiKey !== '') {
-                return $this->generateWithAnthropic($product, $tone, $language, $withTags, $apiKey, $model ?: 'claude-haiku-4-5');
+            $result = match ($provider) {
+                'anthropic' => $this->generateWithAnthropic($product, $tone, $language, $withTags, $apiKey, $model ?: 'claude-haiku-4-5'),
+                'openai'    => $this->generateWithOpenAi($product, $tone, $language, $withTags, $apiKey, $model ?: 'gpt-4o-mini'),
+                'deepseek'  => $this->generateWithDeepSeek($product, $tone, $language, $withTags, $apiKey, $model ?: 'deepseek-chat'),
+                default     => null,
+            };
+
+            if ($result !== null) {
+                $this->recordStatus('ok', null);
+                return $result;
             }
-            if ($provider === 'openai' && $apiKey !== '') {
-                return $this->generateWithOpenAi($product, $tone, $language, $withTags, $apiKey, $model ?: 'gpt-4o-mini');
-            }
-            if ($provider === 'deepseek' && $apiKey !== '') {
-                return $this->generateWithDeepSeek($product, $tone, $language, $withTags, $apiKey, $model ?: 'deepseek-chat');
-            }
+        } catch (AiUnavailableException $e) {
+            // Provider refused for a reason the customer can't fix (no credit,
+            // rate limit, bad key). Record it for the admin and re-throw so the
+            // controller can tell the customer to try later — never silently stub.
+            $this->recordStatus($e->reason, $e->getMessage());
+            Log::warning('ai.generate.unavailable', [
+                'provider' => $provider,
+                'reason'   => $e->reason,
+                'error'    => $e->getMessage(),
+            ]);
+            throw $e;
         } catch (\Throwable $e) {
+            // Unexpected/transient failure (network, JSON, unknown 5xx). Fall back
+            // to the stub so the customer still gets a usable caption.
             Log::warning('ai.generate.failed', [
                 'provider' => $provider,
                 'error'    => $e->getMessage(),
             ]);
-            // fall through to stub on any provider failure
         }
 
         return $this->generateWithStub($product, $tone, $language, $withTags);
+    }
+
+    /**
+     * Persist the latest AI provider health so the admin UI can surface
+     * "limit reached" / "key invalid" without making its own API call.
+     *
+     * @param  'ok'|'limit_reached'|'rate_limited'|'auth_error'|'unavailable'  $status
+     */
+    private function recordStatus(string $status, ?string $message): void
+    {
+        try {
+            Setting::set('facebook_post.ai_status', $status);
+            Setting::set('facebook_post.ai_status_message', (string) $message);
+            Setting::set('facebook_post.ai_status_at', now()->toIso8601String());
+        } catch (\Throwable) {
+            // Status bookkeeping must never break generation.
+        }
+    }
+
+    /**
+     * Map an HTTP error body from any provider to an AiUnavailableException when
+     * it's a customer-unfixable condition (billing/quota, rate limit, auth).
+     * Returns null for errors that should fall through to the stub instead.
+     */
+    private function classifyHttpError(int $status, array $body): ?AiUnavailableException
+    {
+        $message = strtolower((string) ($body['error']['message'] ?? $body['message'] ?? ''));
+        $type    = strtolower((string) ($body['error']['type'] ?? $body['error']['code'] ?? ''));
+
+        // Billing / credit / quota exhausted → "limit reached"
+        if (str_contains($message, 'credit balance')
+            || str_contains($message, 'billing')
+            || str_contains($message, 'quota')
+            || str_contains($message, 'insufficient')
+            || str_contains($type, 'billing')
+            || str_contains($type, 'insufficient_quota')) {
+            return new AiUnavailableException(
+                'AI post generation is temporarily unavailable. Please try again later.',
+                'limit_reached'
+            );
+        }
+
+        // Rate limited / model overloaded → transient, ask to retry shortly
+        if ($status === 429 || str_contains($type, 'rate_limit') || str_contains($type, 'overloaded')) {
+            return new AiUnavailableException(
+                'AI post generation is busy right now. Please try again in a moment.',
+                'rate_limited'
+            );
+        }
+
+        // Bad / expired / revoked key → admin must fix; customer just retries later
+        if (in_array($status, [401, 403], true)
+            || str_contains($type, 'authentication')
+            || str_contains($message, 'api key')) {
+            return new AiUnavailableException(
+                'AI post generation is temporarily unavailable. Please try again later.',
+                'auth_error'
+            );
+        }
+
+        return null;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -75,7 +165,8 @@ class AiPostGenerator
         };
 
         $caption = match ($language) {
-            'bn' => "{$tonePrefix}{$title} এখন মাত্র ৳{$price}!\n\n{$blurb}\n\nএখনই ইনবক্সে অর্ডার করুন।",
+            'bn'    => "{$tonePrefix}{$title} এখন মাত্র ৳{$price}!\n\n{$blurb}\n\nএখনই ইনবক্সে অর্ডার করুন।",
+            'mixed' => "{$tonePrefix}{$title} matro ৳{$price} e!\n\n{$blurb}\n\nOrder korte inbox koren.",
             default => "{$tonePrefix}{$title} — only ৳{$price}!\n\n{$blurb}\n\nDM us to order today.",
         };
 
@@ -111,6 +202,9 @@ class AiPostGenerator
 
         $body = json_decode((string) $response->getBody(), true) ?: [];
         if ($response->getStatusCode() >= 400) {
+            if ($ex = $this->classifyHttpError($response->getStatusCode(), $body)) {
+                throw $ex;
+            }
             throw new \RuntimeException('Anthropic API error: ' . ($body['error']['message'] ?? 'unknown'));
         }
         $text = $body['content'][0]['text'] ?? '';
@@ -135,6 +229,9 @@ class AiPostGenerator
 
         $body = json_decode((string) $response->getBody(), true) ?: [];
         if ($response->getStatusCode() >= 400) {
+            if ($ex = $this->classifyHttpError($response->getStatusCode(), $body)) {
+                throw $ex;
+            }
             throw new \RuntimeException('DeepSeek API error: ' . ($body['error']['message'] ?? 'unknown'));
         }
         $text = $body['choices'][0]['message']['content'] ?? '';
@@ -159,6 +256,9 @@ class AiPostGenerator
 
         $body = json_decode((string) $response->getBody(), true) ?: [];
         if ($response->getStatusCode() >= 400) {
+            if ($ex = $this->classifyHttpError($response->getStatusCode(), $body)) {
+                throw $ex;
+            }
             throw new \RuntimeException('OpenAI API error: ' . ($body['error']['message'] ?? 'unknown'));
         }
         $text = $body['choices'][0]['message']['content'] ?? '';

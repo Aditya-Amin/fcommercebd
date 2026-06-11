@@ -49,16 +49,24 @@ class Subscription extends Model
         return $this->hasMany(Payment::class);
     }
 
+    /** Statuses that grant feature access (paid 'active' + free 'trial'). */
+    public const ACTIVE_STATUSES = ['active', 'trial'];
+
     public function isActive(): bool
     {
-        return $this->status === 'active'
+        return in_array($this->status, self::ACTIVE_STATUSES, true)
             && $this->expiry_date
             && $this->expiry_date->isFuture();
     }
 
+    public function isTrial(): bool
+    {
+        return $this->status === 'trial';
+    }
+
     public function scopeActive($query)
     {
-        return $query->where('status', 'active')->where('expiry_date', '>', now());
+        return $query->whereIn('status', self::ACTIVE_STATUSES)->where('expiry_date', '>', now());
     }
 
     // ─── SMS ─────────────────────────────────────────────────────────────────

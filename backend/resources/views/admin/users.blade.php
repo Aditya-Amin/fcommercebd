@@ -5,6 +5,12 @@
 
 @section('content')
 <div class="card p-5">
+    @if(session('success'))
+        <div class="flex items-center gap-3 rounded-xl bg-green-900/40 border border-green-700/50 px-4 py-3 mb-4 text-sm text-green-300">
+            <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
+        </div>
+    @endif
+
     <div class="flex items-center justify-between mb-5">
         <p class="text-sm text-gray-400">Total <span class="text-white font-semibold">{{ $users->total() }}</span> users registered</p>
     </div>
@@ -51,14 +57,25 @@
                 <td class="py-3 pr-4 text-gray-300 text-center">{{ $user->subscriptions_count }}</td>
                 <td class="py-3 pr-4 text-gray-400">{{ $user->created_at->format('M j, Y') }}</td>
                 <td class="py-3">
-                    <a href="{{ route('admin.users.activity', $user) }}"
-                       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600/20 hover:bg-violet-600/40 text-violet-400 text-xs font-medium transition border border-violet-500/30">
-                        <i class="fa-solid fa-chart-bar text-[10px]"></i> Activity
-                    </a>
+                    <div class="flex items-center gap-2">
+                        <a href="{{ route('admin.users.activity', $user) }}"
+                           class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-violet-600/20 hover:bg-violet-600/40 text-violet-400 text-xs font-medium transition border border-violet-500/30">
+                            <i class="fa-solid fa-chart-bar text-[10px]"></i> Activity
+                        </a>
+                        <form method="POST" action="{{ route('admin.users.destroy', $user) }}"
+                              onsubmit="return confirm('Delete {{ addslashes($user->name) }} permanently? This removes ALL their data — products, posts, orders, subscriptions, payments — and cannot be undone.');">
+                            @csrf
+                            @method('DELETE')
+                            <button type="submit"
+                                    class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-red-600/20 hover:bg-red-600/40 text-red-400 text-xs font-medium transition border border-red-500/30">
+                                <i class="fa-solid fa-trash text-[10px]"></i> Delete
+                            </button>
+                        </form>
+                    </div>
                 </td>
             </tr>
             @empty
-            <tr><td colspan="8" class="py-8 text-center text-gray-500">No users found</td></tr>
+            <tr><td colspan="9" class="py-8 text-center text-gray-500">No users found</td></tr>
             @endforelse
         </tbody>
     </table>

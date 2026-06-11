@@ -7,6 +7,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\UserResource;
 use App\Models\User;
+use App\Services\Plans\TrialService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -29,6 +30,8 @@ use Illuminate\Validation\ValidationException;
  */
 class AuthController extends Controller
 {
+    public function __construct(private readonly TrialService $trials) {}
+
     public function register(RegisterRequest $request): JsonResponse
     {
         $data = $request->validated();
@@ -47,11 +50,15 @@ class AuthController extends Controller
             'avatar_color' => $avatarColor,
         ]);
 
+        // Every new signup gets a free 30-day Starter trial (5 AI generations,
+        // 10 SMS, FB + courier). Locks automatically when it expires.
+        $this->trials->startTrialFor($user);
+
         $token = $user->createToken('spa')->plainTextToken;
 
         return response()->json([
             'token' => $token,
-            'user'  => new UserResource($user),
+            'user'  => new UserResource($user->fresh()),
         ], 201);
     }
 

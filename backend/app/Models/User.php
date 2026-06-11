@@ -19,6 +19,10 @@ class User extends Authenticatable
         'password',
         'business',
         'phone',
+        'fb_posts_limit_override',
+        'fb_posts_reset_at',
+        'ai_generations_limit_override',
+        'ai_generations_reset_at',
     ];
 
     protected $hidden = [
@@ -29,6 +33,8 @@ class User extends Authenticatable
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password'          => 'hashed',
+        'fb_posts_reset_at' => 'datetime',
+        'ai_generations_reset_at' => 'datetime',
     ];
 
     public function subscriptions(): HasMany
@@ -73,6 +79,11 @@ class User extends Authenticatable
     public function facebookPosts(): HasMany
     {
         return $this->hasMany(FacebookPost::class);
+    }
+
+    public function aiGenerations(): HasMany
+    {
+        return $this->hasMany(AiGeneration::class);
     }
 
     public function appNotifications(): HasMany

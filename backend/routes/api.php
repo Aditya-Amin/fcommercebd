@@ -62,6 +62,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/subscriptions',         [SubscriptionController::class, 'index']);
     Route::get('/subscriptions/active',  [SubscriptionController::class, 'active']);
 
+    // Read-only quota meters — must stay reachable even when the subscription
+    // has expired/locked, so the dashboard shows the true 0/locked state
+    // instead of falling back to a stale localStorage counter.
+    Route::get('/facebook/quota', [FacebookController::class, 'quota']);
+    Route::get('/ai/usage',       [AiGenerateController::class, 'usage']);
+
     // In-app notifications stay open so renewal reminders are still visible.
     Route::get('/notifications',                    [NotificationController::class, 'index']);
     Route::get('/notifications/unread-count',       [NotificationController::class, 'unreadCount']);
@@ -88,9 +94,9 @@ Route::middleware(['auth:sanctum', 'subscription.active'])->group(function () {
     Route::post('/facebook/post',              [FacebookController::class, 'post']);
     Route::get('/facebook/posts',              [FacebookController::class, 'posts']);
     Route::delete('/facebook/posts/{post}',    [FacebookController::class, 'cancelPost']);
-    Route::get('/facebook/quota',              [FacebookController::class, 'quota']);
 
-    // AI post generation from a product.
+    // AI post generation from a product (creating a post is gated; reading the
+    // quota meter at /ai/usage is not — see the always-on group above).
     Route::post('/ai/generate-post', [AiGenerateController::class, 'generate']);
 
     // Steadfast Courier — credential management + delivery booking + status.

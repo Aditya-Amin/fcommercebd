@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
   Package,
@@ -19,6 +20,10 @@ import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/Logo";
 import { usePlan } from "@/context/PlanContext";
 import { ProgressBar } from "@/components/ui/ProgressBar";
+import { getAiUsage } from "@/lib/api/facebook";
+import { getSmsStats } from "@/lib/api/sms";
+import type { FbPostsQuota } from "@/lib/types/facebook";
+import type { SmsStats } from "@/lib/types/sms";
 
 interface SidebarProps {
   collapsed: boolean;
@@ -39,6 +44,20 @@ const NAV = [
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 
+// Loading placeholder for a usage meter — shown until the API resolves so we
+// never paint a stale localStorage value on first load.
+function UsageSkeleton({ label }: { label: string }) {
+  return (
+    <div>
+      <div className="mb-1 flex items-center justify-between">
+        <span className="text-xs font-medium text-ink-muted">{label}</span>
+        <span className="h-3 w-8 animate-pulse rounded bg-ink/10" />
+      </div>
+      <div className="h-2 w-full animate-pulse rounded-full bg-ink/10" />
+    </div>
+  );
+}
+
 export function Sidebar({
   collapsed,
   onToggleCollapse,
@@ -46,7 +65,29 @@ export function Sidebar({
   onCloseMobile
 }: SidebarProps) {
   const pathname = usePathname();
-  const { plan, usage } = usePlan();
+  const { plan } = usePlan();
+
+  // Usage meters are server-truth only — never the local PlanContext cache.
+  // A loading skeleton shows until the API resolves so the UI never flashes a
+  // stale localStorage number on first paint. Refetched on navigation.
+  const [aiUsage, setAiUsage] = useState<FbPostsQuota | null>(null);
+  const [smsStats, setSmsStats] = useState<SmsStats | null>(null);
+
+  useEffect(() => {
+    const refresh = () => {
+      getAiUsage()
+        .then(setAiUsage)
+        .catch(() => setAiUsage(null));
+      getSmsStats()
+        .then(setSmsStats)
+        .catch(() => setSmsStats(null));
+    };
+    refresh();
+    // Other screens (e.g. AI Generate, SMS) fire this after a successful action
+    // so the meter updates immediately without a page navigation.
+    window.addEventListener("usage:changed", refresh);
+    return () => window.removeEventListener("usage:changed", refresh);
+  }, [pathname]);
 
   const linkClass = (href: string) => {
     const active = pathname === href || pathname?.startsWith(href + "/");
@@ -143,18 +184,26 @@ export function Sidebar({
                 Track your AI & SMS usage this month.
               </p>
               <div className="space-y-2.5">
-                <ProgressBar
-                  value={usage.aiUsed}
-                  max={Math.max(plan.limits.aiGenerations, 1)}
-                  label="AI"
-                  hint={`${usage.aiUsed}/${plan.limits.aiGenerations}`}
-                />
-                <ProgressBar
-                  value={usage.smsUsed}
-                  max={plan.limits.sms}
-                  label="SMS"
-                  hint={`${usage.smsUsed}/${plan.limits.sms}`}
-                />
+                {aiUsage ? (
+                  <ProgressBar
+                    value={aiUsage.used}
+                    max={Math.max(aiUsage.limit, 1)}
+                    label="AI"
+                    hint={`${aiUsage.used}/${aiUsage.limit}`}
+                  />
+                ) : (
+                  <UsageSkeleton label="AI" />
+                )}
+                {smsStats ? (
+                  <ProgressBar
+                    value={smsStats.used_sms}
+                    max={Math.max(smsStats.total_sms, 1)}
+                    label="SMS"
+                    hint={`${smsStats.used_sms}/${smsStats.total_sms}`}
+                  />
+                ) : (
+                  <UsageSkeleton label="SMS" />
+                )}
               </div>
             </div>
           </div>

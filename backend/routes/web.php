@@ -34,6 +34,14 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::get('/subscriptions',       [DashboardController::class, 'subscriptions'])->name('subscriptions');
     Route::get('/users',               [DashboardController::class, 'users'])->name('users');
     Route::get('/users/{user}/activity', [DashboardController::class, 'userActivity'])->name('users.activity');
+    Route::post('/users/{user}/quota',          [DashboardController::class, 'updateUserQuota'])->name('users.quota.update');
+    Route::post('/users/{user}/quota/reset',    [DashboardController::class, 'resetUserQuota'])->name('users.quota.reset');
+    Route::post('/users/{user}/ai-quota',       [DashboardController::class, 'updateUserAiQuota'])->name('users.ai-quota.update');
+    Route::post('/users/{user}/ai-quota/reset', [DashboardController::class, 'resetUserAiQuota'])->name('users.ai-quota.reset');
+    Route::post('/users/{user}/sms-quota',       [DashboardController::class, 'updateUserSmsQuota'])->name('users.sms-quota.update');
+    Route::post('/users/{user}/sms-quota/reset', [DashboardController::class, 'resetUserSmsQuota'])->name('users.sms-quota.reset');
+    Route::post('/users/{user}/plan',            [DashboardController::class, 'assignPlan'])->name('users.plan.assign');
+    Route::delete('/users/{user}',     [DashboardController::class, 'destroyUser'])->name('users.destroy');
 
     // Settings
     Route::prefix('settings')->name('settings.')->group(function () {
