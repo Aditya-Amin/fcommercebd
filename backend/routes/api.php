@@ -1,3 +1,7 @@
+
+
+
+
 <?php
 
 use App\Http\Controllers\Admin\PurchasesController;
@@ -8,6 +12,7 @@ use App\Http\Controllers\Api\BkashController;
 use App\Http\Controllers\Api\CategoryController;
 use App\Http\Controllers\Api\FacebookController;
 use App\Http\Controllers\Api\NotificationController;
+use App\Http\Controllers\Api\SupportController;
 use App\Http\Controllers\Api\PackageController;
 use App\Http\Controllers\Api\ProductController;
 use App\Http\Controllers\Api\SmsController;
@@ -78,6 +83,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/notifications/mark-all-read',     [NotificationController::class, 'markAllRead']);
     Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
     Route::delete('/notifications/{notification}',  [NotificationController::class, 'destroy']);
+
+    // Support tickets — open to all authenticated users (even expired subscriptions)
+    Route::get('/support/tickets',                              [SupportController::class, 'index']);
+    Route::post('/support/tickets',                             [SupportController::class, 'store']);
+    Route::get('/support/tickets/{ticket}',                     [SupportController::class, 'show']);
+    Route::post('/support/tickets/{ticket}/messages',           [SupportController::class, 'reply']);
 });
 
 // Feature endpoints — gated by an active subscription. Expired users get a

@@ -6,12 +6,17 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Http\Requests\Auth\RegisterRequest;
 use App\Http\Resources\UserResource;
+use App\Mail\NewUserAdminAlertMail;
+use App\Mail\UserWelcomeMail;
+use App\Models\Admin;
 use App\Models\User;
+use App\Services\Admin\AdminNotificationService;
 use App\Services\Plans\TrialService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Validation\ValidationException;
 
 /**
@@ -56,6 +61,25 @@ class AuthController extends Controller
 
         $token = $user->createToken('spa')->plainTextToken;
 
+        AdminNotificationService::userRegistered($user);
+
+        // Welcome email to the new user
+        try {
+            Mail::to($user->email)->send(new UserWelcomeMail($user));
+        } catch (\Throwable $e) {
+            Log::error('UserWelcomeMail failed', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+        }
+
+        // Alert email to every super admin
+        try {
+            $superAdmins = Admin::where('role', 'super_admin')->get();
+            foreach ($superAdmins as $admin) {
+                Mail::to($admin->email)->send(new NewUserAdminAlertMail($user));
+            }
+        } catch (\Throwable $e) {
+            Log::error('NewUserAdminAlertMail failed', ['user_id' => $user->id, 'error' => $e->getMessage()]);
+        }
+
         return response()->json([
             'token' => $token,
             'user'  => new UserResource($user->fresh()),
@@ -76,6 +100,8 @@ class AuthController extends Controller
 
         $token = $user->createToken('spa')->plainTextToken;
 
+        AdminNotificationService::userLoggedIn($user);
+
         return response()->json([
             'token' => $token,
             'user'  => new UserResource($user),
@@ -85,8 +111,11 @@ class AuthController extends Controller
     public function logout(Request $request): JsonResponse
     {
         // Revoke ONLY the current token. Other devices stay logged in.
-        $token = $request->user()->currentAccessToken();
+        $user  = $request->user();
+        $token = $user->currentAccessToken();
         if ($token) $token->delete();
+
+        AdminNotificationService::userLoggedOut($user);
 
         return response()->json(['data' => ['loggedOut' => true]]);
     }

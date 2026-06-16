@@ -7,6 +7,8 @@ use App\Library\SslCommerz\SslCommerzNotification;
 use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Models\User;
+use App\Services\Admin\AdminNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -238,7 +240,9 @@ class SslCommerzController extends Controller
 
     private function finalize(Payment $payment, array $sslData): Subscription
     {
-        return DB::transaction(function () use ($payment, $sslData) {
+        $isNew = false;
+
+        $subscription = DB::transaction(function () use ($payment, $sslData, &$isNew) {
             $bankTranId = $sslData['bank_tran_id'] ?? ('SSLCZ-' . uniqid());
 
             $existing = Subscription::where('transaction_id', $bankTranId)->lockForUpdate()->first();
@@ -273,7 +277,17 @@ class SslCommerzController extends Controller
                 'raw_response'    => $sslData,
             ]);
 
+            $isNew = true;
             return $subscription;
         });
+
+        if ($isNew) {
+            $user = User::find($subscription->user_id);
+            if ($user) {
+                AdminNotificationService::planPurchased($user, $subscription->load('plan'));
+            }
+        }
+
+        return $subscription;
     }
 }

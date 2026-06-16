@@ -6,10 +6,12 @@ import { Sidebar } from "@/components/layout/Sidebar";
 import { Topbar } from "@/components/layout/Topbar";
 import { useAuth } from "@/context/AuthContext";
 import { NotificationProvider } from "@/context/NotificationContext";
+import { FREE_TRIAL_DURATION_MS } from "@/lib/plans";
 import { cn } from "@/lib/utils";
 
 const COLLAPSE_KEY = "fcommerce.sidebar.collapsed";
 const EXPIRED_PATH = "/subscription-expired";
+const TRIAL_EXPIRED_PATH = "/trial-expired";
 
 export default function DashboardLayout({
   children
@@ -38,6 +40,20 @@ export default function DashboardLayout({
     }
     // Inverse: a renewed user landing on /subscription-expired should bounce out.
     if (!expired && pathname === EXPIRED_PATH) {
+      router.replace("/dashboard");
+    }
+
+    // Free trial expiry: new users with no subscription history get 30 days.
+    const isFreeTrial = !user?.subscription && !user?.lastSubscription;
+    const trialExpired =
+      isFreeTrial &&
+      !!user?.createdAt &&
+      Date.now() > new Date(user.createdAt).getTime() + FREE_TRIAL_DURATION_MS;
+    if (trialExpired && pathname !== TRIAL_EXPIRED_PATH) {
+      router.replace(TRIAL_EXPIRED_PATH);
+      return;
+    }
+    if (!trialExpired && pathname === TRIAL_EXPIRED_PATH) {
       router.replace("/dashboard");
     }
   }, [isReady, isAuthenticated, user, pathname, router]);

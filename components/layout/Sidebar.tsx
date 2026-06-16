@@ -14,7 +14,9 @@ import {
   Settings,
   BarChart2,
   ChevronLeft,
-  X
+  X,
+  Headphones,
+  LayoutTemplate
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Logo } from "@/components/ui/Logo";
@@ -38,9 +40,11 @@ const NAV = [
   { href: "/orders", label: "Orders", icon: ShoppingCart },
   { href: "/ai-generate", label: "AI Generate", icon: Sparkles },
   { href: "/campaigns", label: "SMS Campaigns", icon: MessageSquare },
+  { href: "/templates", label: "Templates", icon: LayoutTemplate },
   { href: "/usage", label: "Usage Stats", icon: BarChart2 },
   { href: "/integrations", label: "Integrations", icon: Plug },
   { href: "/plan-details", label: "Plan", icon: CreditCard },
+  { href: "/support", label: "Support", icon: Headphones },
   { href: "/settings", label: "Settings", icon: Settings },
 ];
 

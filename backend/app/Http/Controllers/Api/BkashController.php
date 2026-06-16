@@ -7,6 +7,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Payment;
 use App\Models\Plan;
 use App\Models\Subscription;
+use App\Models\User;
+use App\Services\Admin\AdminNotificationService;
 use App\Services\BkashService;
 use Illuminate\Contracts\View\View;
 use Illuminate\Http\JsonResponse;
@@ -504,7 +506,9 @@ class BkashController extends Controller
      */
     private function finalize(Payment $payment, array $execute): Subscription
     {
-        return DB::transaction(function () use ($payment, $execute) {
+        $isNew = false;
+
+        $subscription = DB::transaction(function () use ($payment, $execute, &$isNew) {
             // Duplicate trxID? Reuse the existing subscription rather than double-charging the user.
             $existing = Subscription::where('transaction_id', $execute['trxID'])->lockForUpdate()->first();
             if ($existing) {
@@ -538,7 +542,17 @@ class BkashController extends Controller
                 'raw_response'    => $execute,
             ]);
 
+            $isNew = true;
             return $subscription;
         });
+
+        if ($isNew) {
+            $user = User::find($subscription->user_id);
+            if ($user) {
+                AdminNotificationService::planPurchased($user, $subscription->load('plan'));
+            }
+        }
+
+        return $subscription;
     }
 }

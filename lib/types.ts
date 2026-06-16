@@ -1,4 +1,4 @@
-export type PlanId = "starter" | "growth";
+export type PlanId = "starter" | "growth" | "free";
 
 export interface Plan {
   id: PlanId;
@@ -115,4 +115,32 @@ export interface GeneratedAsset {
   imageUrl: string;
   caption: string;
   hashtags: string[];
+}
+
+export interface FAQItem {
+  id: string;
+  question: string;
+  answer: string;
+}
+
+export interface TemplateConfig {
+  businessCategory: string;
+  templateType: string;
+  videoUrl: string;
+  countdownEndDate: string;
+  landingPageTitle: string;
+  faqItems: FAQItem[];
+  bkashNumber: string;
+  nagadNumber: string;
+  rocketNumber: string;
+  productName: string;
+  regularPrice: string;
+  discountPrice: string;
+  businessName: string;
+  slug: string;
+  productFeatures: string[];
+  contactPhone: string;
+  selectedProductId: string;
+  productImageUrl: string;
+  whyBuyReasons: string[];
 }

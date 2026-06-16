@@ -21,11 +21,63 @@
         <span class="ml-2 px-2.5 py-0.5 rounded-full bg-gray-700 text-gray-300 text-xs">{{ $user->business }}</span>
         @endif
     </div>
+    <div class="ml-auto">
+        <button onclick="document.getElementById('sms-modal').classList.remove('hidden')"
+                class="inline-flex items-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition">
+            <i class="fa-solid fa-comment-sms text-xs"></i> Send SMS
+        </button>
+    </div>
+</div>
+
+{{-- SMS Modal --}}
+<div id="sms-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+    <div class="bg-gray-900 border border-gray-700 rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6">
+        <div class="flex items-center justify-between mb-5">
+            <h3 class="text-white font-semibold text-base flex items-center gap-2">
+                <i class="fa-solid fa-comment-sms text-green-400"></i> Send SMS to {{ $user->name }}
+            </h3>
+            <button onclick="document.getElementById('sms-modal').classList.add('hidden')"
+                    class="text-gray-500 hover:text-white transition text-lg leading-none">&times;</button>
+        </div>
+        @if($user->phone)
+        <p class="text-xs text-gray-400 mb-4">Recipient: <span class="text-white font-mono">{{ $user->phone }}</span></p>
+        @else
+        <p class="text-xs text-red-400 mb-4"><i class="fa-solid fa-triangle-exclamation mr-1"></i>This user has no phone number on file. SMS cannot be delivered.</p>
+        @endif
+        <form method="POST" action="{{ route('admin.users.send-sms', $user) }}">
+            @csrf
+            <div class="mb-4">
+                <label class="block text-xs font-medium text-gray-300 mb-1.5">Message</label>
+                <textarea name="message" rows="4" maxlength="1600" required
+                          placeholder="Type your message here…"
+                          class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2.5 text-sm text-gray-200 focus:outline-none focus:border-green-500 resize-none"></textarea>
+                <p class="text-[11px] text-gray-500 mt-1">Max 1600 characters (multi-part SMS).</p>
+            </div>
+            <div class="flex gap-3">
+                <button type="submit"
+                        class="flex-1 inline-flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition">
+                    <i class="fa-solid fa-paper-plane text-xs"></i> Send
+                </button>
+                <button type="button" onclick="document.getElementById('sms-modal').classList.add('hidden')"
+                        class="px-4 py-2 rounded-lg text-sm text-gray-400 hover:text-white bg-gray-700/50 hover:bg-gray-700 transition">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
 </div>
 
 @if(session('success'))
     <div class="flex items-center gap-3 rounded-xl bg-green-900/40 border border-green-700/50 px-4 py-3 mb-6 text-sm text-green-300">
         <i class="fa-solid fa-circle-check"></i> {{ session('success') }}
+    </div>
+@endif
+
+@if(session('sms_result'))
+    @php $smsMsg = session('sms_result'); $smsOk = str_starts_with($smsMsg, 'ok:'); $smsTxt = ltrim(substr($smsMsg, strpos($smsMsg, ':') + 1)); @endphp
+    <div class="flex items-center gap-3 rounded-xl px-4 py-3 mb-6 text-sm
+        {{ $smsOk ? 'bg-green-900/40 border border-green-700/50 text-green-300' : 'bg-red-900/40 border border-red-700/50 text-red-300' }}">
+        <i class="fa-solid {{ $smsOk ? 'fa-circle-check' : 'fa-circle-exclamation' }}"></i> {{ $smsTxt }}
     </div>
 @endif
 
