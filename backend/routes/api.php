@@ -55,6 +55,11 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me',     [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
 
+    // Category management — basic feature, not gated behind subscription.
+    // POST creates user-owned categories; GET is public but also here so
+    // authenticated users can optionally call it with auth headers.
+    Route::post('/categories', [CategoryController::class, 'store']);
+
     Route::post('/bkash/create-payment',  [BkashController::class, 'createPayment']);
     Route::post('/bkash/execute-payment', [BkashController::class, 'executePayment']);
     Route::post('/bkash/query-payment',   [BkashController::class, 'queryPayment']);
@@ -83,9 +88,6 @@ Route::middleware(['auth:sanctum', 'subscription.active'])->group(function () {
     // Products (CRUD scoped to authenticated user).
     Route::post('/products/upload-image', [ProductController::class, 'uploadImage']);
     Route::apiResource('products', ProductController::class);
-
-    // Categories (any authenticated user can add new ones).
-    Route::post('/categories', [CategoryController::class, 'store']);
 
     // Facebook Page integration.
     Route::post('/facebook/connect',           [FacebookController::class, 'connect']);

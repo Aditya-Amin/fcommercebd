@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useState, type ChangeEvent, type DragEvent } from "react";
-import Image from "next/image";
 import { ImagePlus, Star, Trash2, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { uploadProductImage } from "@/lib/api/products";
@@ -151,14 +150,12 @@ export function ProductImageUpload({
               key={img.id}
               className="group relative overflow-hidden rounded-xl border border-border bg-white"
             >
-              <div className="relative aspect-square w-full">
-                <Image
+              <div className="relative aspect-square w-full overflow-hidden">
+                {/* Native <img> handles data: URLs (mock mode) and external URLs without Next.js domain restrictions */}
+                <img
                   src={img.url}
                   alt={img.alt ?? ""}
-                  fill
-                  sizes="200px"
-                  className="object-cover"
-                  unoptimized
+                  className="absolute inset-0 h-full w-full object-cover"
                 />
               </div>
               {img.isPrimary && (

@@ -69,7 +69,7 @@ export async function getCategories(): Promise<Category[]> {
     return loadStore();
   }
   const res = await fetch(`${LARAVEL_API_URL}/api/categories`, {
-    headers: { Accept: "application/json" }
+    headers: { Accept: "application/json", ...authHeaders() }
   });
   const body = await jsonOrThrow<{ data: Category[] }>(res);
   return body.data;

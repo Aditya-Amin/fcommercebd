@@ -71,7 +71,7 @@ class ProductController extends Controller
     public function store(StoreProductRequest $request): JsonResponse
     {
         $data = $request->validated();
-        $categoryId = $this->resolveCategoryId($data);
+        $categoryId = $this->resolveCategoryId($data, $request->user()->id);
 
         $product = DB::transaction(function () use ($request, $data, $categoryId) {
             $product = Product::create([
@@ -103,7 +103,7 @@ class ProductController extends Controller
     {
         $data = $request->validated();
         $categoryId = array_key_exists('category', $data) || array_key_exists('category_id', $data)
-            ? $this->resolveCategoryId($data)
+            ? $this->resolveCategoryId($data, $request->user()->id)
             : $product->category_id;
 
         $product = DB::transaction(function () use ($product, $data, $categoryId) {
@@ -163,13 +163,19 @@ class ProductController extends Controller
         abort_if($product->user_id !== $request->user()->id, 403, 'Forbidden');
     }
 
-    private function resolveCategoryId(array $data): ?int
+    private function resolveCategoryId(array $data, int $userId): ?int
     {
         if (! empty($data['category_id'])) {
             return (int) $data['category_id'];
         }
         if (! empty($data['category'])) {
-            return Category::where('slug', $data['category'])->value('id');
+            // Prefer the user's own category over a system category with the same slug.
+            return Category::where('slug', $data['category'])
+                ->where(function ($q) use ($userId) {
+                    $q->where('user_id', $userId)->orWhereNull('user_id');
+                })
+                ->orderByRaw('CASE WHEN user_id = ? THEN 0 ELSE 1 END', [$userId])
+                ->value('id');
         }
         return null;
     }
