@@ -9,7 +9,7 @@ import {
   useState,
   type ReactNode
 } from "react";
-import { PLANS } from "@/lib/plans";
+import { FREE_TRIAL_DURATION_MS, PLANS } from "@/lib/plans";
 import type { Plan, PlanId, UsageStats } from "@/lib/types";
 import { useAuth } from "@/context/AuthContext";
 
@@ -40,6 +40,9 @@ interface PlanState {
   plan: Plan;
   usage: UsageStats;
   lastPurchase: PlanPurchase | null;
+  isFreeTrial: boolean;
+  isTrialExpired: boolean;
+  trialExpiresAt: number | null;
   setPlan: (id: PlanId) => void;
   activatePlan: (purchase: PlanPurchase) => void;
   canUseAI: () => boolean;
@@ -68,7 +71,7 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     try {
       const p = localStorage.getItem(PLAN_STORAGE_KEY);
-      if (p === "starter" || p === "growth") setPlanIdState(p);
+      if (p === "free" || p === "starter" || p === "growth") setPlanIdState(p);
     } catch {
       // ignore
     }
@@ -118,19 +121,20 @@ export function PlanProvider({ children }: { children: ReactNode }) {
 
   // Server is the source of truth: whenever AuthContext refreshes the user
   // (login, /payment/success, /api/me), pull plan from their active subscription
-  // and overwrite both state and the localStorage cache. Prevents the dashboard
-  // from showing a stale plan after a Starter signup or a plan change.
+  // and overwrite both state and the localStorage cache. New users with no
+  // subscription history are placed on the free trial plan.
   useEffect(() => {
-    const serverPlanId = user?.subscription?.planId;
+    if (!user) return;
+    const serverPlanId = user.subscription?.planId;
     if (serverPlanId === "starter" || serverPlanId === "growth") {
       setPlanIdState(serverPlanId);
-      try {
-        localStorage.setItem(PLAN_STORAGE_KEY, serverPlanId);
-      } catch {
-        // ignore
-      }
+      try { localStorage.setItem(PLAN_STORAGE_KEY, serverPlanId); } catch {}
+    } else if (!user.subscription && !user.lastSubscription) {
+      // Never subscribed → free trial
+      setPlanIdState("free");
+      try { localStorage.setItem(PLAN_STORAGE_KEY, "free"); } catch {}
     }
-  }, [user?.subscription?.planId]);
+  }, [user]);
 
   const persistUsage = useCallback(
     (next: UsageStats) => {
@@ -175,14 +179,23 @@ export function PlanProvider({ children }: { children: ReactNode }) {
 
   const plan = PLANS[planId];
 
+  const isFreeTrial = planId === "free";
+
+  const trialExpiresAt = useMemo<number | null>(() => {
+    if (!isFreeTrial || !user?.createdAt) return null;
+    return new Date(user.createdAt).getTime() + FREE_TRIAL_DURATION_MS;
+  }, [isFreeTrial, user?.createdAt]);
+
+  const isTrialExpired = isFreeTrial && trialExpiresAt !== null && Date.now() > trialExpiresAt;
+
   const canUseAI = useCallback(
-    () => plan.limits.aiGenerations > 0 && usage.aiUsed < plan.limits.aiGenerations,
-    [plan, usage.aiUsed]
+    () => !isTrialExpired && plan.limits.aiGenerations > 0 && usage.aiUsed < plan.limits.aiGenerations,
+    [isTrialExpired, plan, usage.aiUsed]
   );
 
   const canSendSMS = useCallback(
-    (count = 1) => usage.smsUsed + count <= plan.limits.sms,
-    [plan.limits.sms, usage.smsUsed]
+    (count = 1) => !isTrialExpired && usage.smsUsed + count <= plan.limits.sms,
+    [isTrialExpired, plan.limits.sms, usage.smsUsed]
   );
 
   const canCreateFBPost = useCallback(
@@ -220,6 +233,9 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       plan,
       usage,
       lastPurchase,
+      isFreeTrial,
+      isTrialExpired,
+      trialExpiresAt,
       setPlan,
       activatePlan,
       canUseAI,
@@ -236,6 +252,9 @@ export function PlanProvider({ children }: { children: ReactNode }) {
       plan,
       usage,
       lastPurchase,
+      isFreeTrial,
+      isTrialExpired,
+      trialExpiresAt,
       setPlan,
       activatePlan,
       canUseAI,

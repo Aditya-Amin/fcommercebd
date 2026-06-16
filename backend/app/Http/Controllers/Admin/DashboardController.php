@@ -13,8 +13,10 @@ use App\Models\SmsLog;
 use App\Models\SteadfastConsignment;
 use App\Models\Subscription;
 use App\Models\User;
+use App\Services\Admin\AdminNotificationService;
 use App\Services\Plans\PlanQuotaService;
 use App\Services\Sms\SmsBalanceService;
+use App\Services\Sms\SmsService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -60,6 +62,30 @@ class DashboardController extends Controller
             ->limit(10)
             ->get();
 
+        // Active vs cancelled subscribers
+        $activeSubscribers    = Subscription::whereIn('status', Subscription::ACTIVE_STATUSES)->count();
+        $cancelledSubscribers = Subscription::where('status', 'cancelled')->count();
+
+        // Platform-wide SMS stats (this month vs last month)
+        $thisMonthStart = now()->startOfMonth();
+        $lastMonthStart = now()->subMonth()->startOfMonth();
+        $lastMonthEnd   = now()->subMonth()->endOfMonth();
+
+        $totalSmsSentMonth     = SmsLog::whereIn('status', [SmsLog::STATUS_SENT, SmsLog::STATUS_MOCK])
+                                    ->where('created_at', '>=', $thisMonthStart)->count();
+        $totalSmsSentLastMonth = SmsLog::whereIn('status', [SmsLog::STATUS_SENT, SmsLog::STATUS_MOCK])
+                                    ->whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])->count();
+        $smsChange = $totalSmsSentLastMonth > 0
+            ? round((($totalSmsSentMonth - $totalSmsSentLastMonth) / $totalSmsSentLastMonth) * 100)
+            : ($totalSmsSentMonth > 0 ? 100 : 0);
+
+        // Platform-wide AI generation stats (this month vs last month)
+        $totalAiMonth     = AiGeneration::where('created_at', '>=', $thisMonthStart)->count();
+        $totalAiLastMonth = AiGeneration::whereBetween('created_at', [$lastMonthStart, $lastMonthEnd])->count();
+        $aiChange = $totalAiLastMonth > 0
+            ? round((($totalAiMonth - $totalAiLastMonth) / $totalAiLastMonth) * 100)
+            : ($totalAiMonth > 0 ? 100 : 0);
+
         // AI (Facebook post) provider health — surfaced from the last real call.
         $aiStatus    = Setting::get('facebook_post.ai_status');
         $aiStatusMsg = Setting::get('facebook_post.ai_status_message');
@@ -74,13 +100,137 @@ class DashboardController extends Controller
             'recentSubscriptions',
             'aiStatus',
             'aiStatusMsg',
+            'activeSubscribers',
+            'cancelledSubscribers',
+            'totalSmsSentMonth',
+            'smsChange',
+            'totalAiMonth',
+            'aiChange',
         ));
     }
 
-    public function subscriptions()
+    public function subscriptions(Request $request)
     {
-        $subscriptions = Subscription::with(['user', 'plan'])->latest()->paginate(20);
-        return view('admin.subscriptions', compact('subscriptions'));
+        $status = $request->query('status'); // 'active' | 'cancelled' | null
+
+        $subscriptions = Subscription::with(['user', 'plan'])
+            ->when($status === 'active', fn ($q) => $q->whereIn('status', Subscription::ACTIVE_STATUSES))
+            ->when($status === 'cancelled', fn ($q) => $q->where('status', 'cancelled'))
+            ->latest()
+            ->paginate(20)
+            ->withQueryString();
+
+        return view('admin.subscriptions', compact('subscriptions', 'status'));
+    }
+
+    public function aiCost()
+    {
+        $since6 = now()->subMonths(6)->startOfMonth();
+
+        // ── AI Generations ────────────────────────────────────────────────────
+        $totalAiGenerations = AiGeneration::count();
+
+        $monthlyAi = AiGeneration::where('created_at', '>=', $since6)
+            ->select(
+                DB::raw("DATE_FORMAT(created_at, '%b %Y') as month"),
+                DB::raw("DATE_FORMAT(created_at, '%Y-%m') as sort_key"),
+                DB::raw('COUNT(*) as total')
+            )
+            ->groupBy('month', 'sort_key')
+            ->orderBy('sort_key')
+            ->get();
+
+        $aiByProvider = AiGeneration::select('provider', DB::raw('COUNT(*) as total'))
+            ->groupBy('provider')
+            ->orderByDesc('total')
+            ->get();
+
+        $recentAi = AiGeneration::with('user')
+            ->latest()
+            ->limit(10)
+            ->get();
+
+        // ── SMS ───────────────────────────────────────────────────────────────
+        $totalSmsSent   = SmsLog::where('status', SmsLog::STATUS_SENT)->count();
+        $totalSmsFailed = SmsLog::where('status', SmsLog::STATUS_FAILED)->count();
+        $totalSmsMock   = SmsLog::where('status', SmsLog::STATUS_MOCK)->count();
+
+        $monthlySms = SmsLog::where('created_at', '>=', $since6)
+            ->where('status', SmsLog::STATUS_SENT)
+            ->select(
+                DB::raw("DATE_FORMAT(created_at, '%b %Y') as month"),
+                DB::raw("DATE_FORMAT(created_at, '%Y-%m') as sort_key"),
+                DB::raw('COUNT(*) as total')
+            )
+            ->groupBy('month', 'sort_key')
+            ->orderBy('sort_key')
+            ->get();
+
+        // ── Facebook Posts ────────────────────────────────────────────────────
+        $totalFbPosts     = FacebookPost::count();
+        $publishedFbPosts = FacebookPost::where('status', FacebookPost::STATUS_PUBLISHED)->count();
+        $failedFbPosts    = FacebookPost::where('status', FacebookPost::STATUS_FAILED)->count();
+
+        $monthlyFb = FacebookPost::where('created_at', '>=', $since6)
+            ->select(
+                DB::raw("DATE_FORMAT(created_at, '%b %Y') as month"),
+                DB::raw("DATE_FORMAT(created_at, '%Y-%m') as sort_key"),
+                DB::raw('COUNT(*) as total')
+            )
+            ->groupBy('month', 'sort_key')
+            ->orderBy('sort_key')
+            ->get();
+
+        return view('admin.ai-cost', compact(
+            'totalAiGenerations', 'monthlyAi', 'aiByProvider', 'recentAi',
+            'totalSmsSent', 'totalSmsFailed', 'totalSmsMock', 'monthlySms',
+            'totalFbPosts', 'publishedFbPosts', 'failedFbPosts', 'monthlyFb',
+        ));
+    }
+
+    public function sendSubscriptionSms(Request $request): RedirectResponse
+    {
+        $request->validate([
+            'message'    => ['required', 'string', 'max:1600'],
+            'target'     => ['required', 'in:selected,all'],
+            'user_ids'   => ['required_if:target,selected', 'nullable', 'array'],
+            'user_ids.*' => ['integer'],
+        ]);
+
+        $sms = app(SmsService::class);
+
+        if ($request->target === 'selected') {
+            $users = User::whereIn('id', $request->user_ids ?? [])->whereNotNull('phone')->get();
+        } else {
+            // all subscribers (distinct users)
+            $users = User::whereHas('subscriptions')->whereNotNull('phone')->get();
+        }
+
+        $sent   = 0;
+        $failed = 0;
+        foreach ($users as $user) {
+            $sms->send($user->phone, $request->message) ? $sent++ : $failed++;
+        }
+
+        $msg = "SMS sent to {$sent} subscriber(s).";
+        if ($failed) $msg .= " {$failed} failed (invalid/missing number).";
+
+        return redirect()->route('admin.subscriptions', ['status' => $request->query('status')])
+                         ->with('sms_result', $msg);
+    }
+
+    public function sendUserSms(Request $request, User $user): RedirectResponse
+    {
+        $request->validate(['message' => ['required', 'string', 'max:1600']]);
+
+        if (! $user->phone) {
+            return redirect()->route('admin.users.activity', $user)->with('sms_result', 'error:User has no phone number on file.');
+        }
+
+        $ok  = app(SmsService::class)->send($user->phone, $request->message);
+        $msg = $ok ? "SMS sent to {$user->name} ({$user->phone})." : "Failed to send SMS to {$user->name} — check SMS gateway settings.";
+
+        return redirect()->route('admin.users.activity', $user)->with('sms_result', ($ok ? 'ok:' : 'error:') . $msg);
     }
 
     public function users()
@@ -201,6 +351,7 @@ class DashboardController extends Controller
 
         $subscription->setRelation('plan', $plan);
         $smsBalance->activate($subscription);
+        AdminNotificationService::planAssigned($user, $subscription);
 
         return back()->with('success', "{$plan->name} plan activated for {$user->name} ({$days} days).");
     }

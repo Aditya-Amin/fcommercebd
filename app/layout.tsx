@@ -5,6 +5,7 @@ import { AuthProvider } from "@/context/AuthContext";
 import { PlanProvider } from "@/context/PlanContext";
 import { ToastProvider } from "@/context/ToastContext";
 import { SteadfastProvider } from "@/context/SteadfastContext";
+import { TemplateProvider } from "@/context/TemplateContext";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -31,7 +32,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AuthProvider>
           <PlanProvider>
             <SteadfastProvider>
-              <ToastProvider>{children}</ToastProvider>
+              <TemplateProvider>
+                <ToastProvider>{children}</ToastProvider>
+              </TemplateProvider>
             </SteadfastProvider>
           </PlanProvider>
         </AuthProvider>

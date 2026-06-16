@@ -26,57 +26,91 @@
 @endif
 
 {{-- Stats Cards --}}
-<div class="grid grid-cols-4 gap-4 mb-6">
-    <div class="card p-5 flex items-center gap-4">
+<div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+    <a href="{{ route('admin.subscriptions') }}"
+       class="card p-5 flex items-center gap-4 transition hover:-translate-y-0.5 hover:brightness-110 cursor-pointer">
         <div class="w-11 h-11 rounded-xl flex items-center justify-center" style="background:#1e2a45">
             <i class="fa-solid fa-dollar-sign text-blue-400 text-lg"></i>
         </div>
         <div>
             <p class="text-xs text-gray-400 mb-0.5">Total Sales</p>
-            <p class="text-xl font-bold">৳ {{ number_format($totalSales, 0) }}</p>
+            <p class="text-xl font-bold text-white">৳ {{ number_format($totalSales, 0) }}</p>
             <p class="text-xs mt-0.5 {{ $salesChange >= 0 ? 'text-green-400' : 'text-red-400' }}">
                 <i class="fa-solid fa-arrow-{{ $salesChange >= 0 ? 'up' : 'down' }}"></i>
                 {{ abs($salesChange) }}% Than Last Month
             </p>
         </div>
-    </div>
+    </a>
 
-    <div class="card p-5 flex items-center gap-4">
+    <a href="{{ route('admin.subscriptions') }}"
+       class="card p-5 flex items-center gap-4 transition hover:-translate-y-0.5 hover:brightness-110 cursor-pointer">
         <div class="w-11 h-11 rounded-xl flex items-center justify-center" style="background:#1a3030">
             <i class="fa-solid fa-users text-teal-400 text-lg"></i>
         </div>
         <div>
             <p class="text-xs text-gray-400 mb-0.5">User Subscriptions</p>
-            <p class="text-xl font-bold">{{ number_format($totalSubscriptions) }}</p>
+            <p class="text-xl font-bold text-white">{{ number_format($totalSubscriptions) }}</p>
             <p class="text-xs text-green-400 mt-0.5"><i class="fa-solid fa-arrow-up"></i> 8% Than Last Month</p>
         </div>
-    </div>
+    </a>
 
-    <div class="card p-5 flex items-center gap-4">
+    <a href="{{ route('admin.ai-cost') }}"
+       class="card p-5 flex items-center gap-4 transition hover:-translate-y-0.5 hover:brightness-110 cursor-pointer">
         <div class="w-11 h-11 rounded-xl flex items-center justify-center" style="background:#2a1a30">
             <i class="fa-solid fa-circle-question text-pink-400 text-lg"></i>
         </div>
         <div>
-            <p class="text-xs text-gray-400 mb-0.5">Total AI Cost</p>
-            <p class="text-xl font-bold">$ 0</p>
+            <p class="text-xs text-gray-400 mb-0.5">Total Cost</p>
+            <p class="text-xl font-bold text-white">$ 0</p>
             <p class="text-xs text-green-400 mt-0.5"><i class="fa-solid fa-arrow-up"></i> 32% Than Last Month</p>
         </div>
-    </div>
+    </a>
 
-    <div class="card p-5 flex items-center gap-4">
+    <a href="{{ route('admin.users') }}"
+       class="card p-5 flex items-center gap-4 transition hover:-translate-y-0.5 hover:brightness-110 cursor-pointer">
         <div class="w-11 h-11 rounded-xl flex items-center justify-center" style="background:#2a2010">
             <i class="fa-solid fa-coins text-yellow-400 text-lg"></i>
         </div>
         <div>
             <p class="text-xs text-gray-400 mb-0.5">Total Users</p>
-            <p class="text-xl font-bold">{{ number_format($totalUsers) }}</p>
+            <p class="text-xl font-bold text-white">{{ number_format($totalUsers) }}</p>
             <p class="text-xs text-red-400 mt-0.5"><i class="fa-solid fa-arrow-down"></i> 3% Than Last Month</p>
         </div>
-    </div>
+    </a>
+
+    <a href="{{ route('admin.ai-cost') }}"
+       class="card p-5 flex items-center gap-4 transition hover:-translate-y-0.5 hover:brightness-110 cursor-pointer">
+        <div class="w-11 h-11 rounded-xl flex items-center justify-center" style="background:#102a18">
+            <i class="fa-solid fa-comment-sms text-green-400 text-lg"></i>
+        </div>
+        <div>
+            <p class="text-xs text-gray-400 mb-0.5">SMS Sent This Month</p>
+            <p class="text-xl font-bold text-white">{{ number_format($totalSmsSentMonth) }}</p>
+            <p class="text-xs mt-0.5 {{ $smsChange >= 0 ? 'text-green-400' : 'text-red-400' }}">
+                <i class="fa-solid fa-arrow-{{ $smsChange >= 0 ? 'up' : 'down' }}"></i>
+                {{ abs($smsChange) }}% Than Last Month
+            </p>
+        </div>
+    </a>
+
+    <a href="{{ route('admin.ai-cost') }}"
+       class="card p-5 flex items-center gap-4 transition hover:-translate-y-0.5 hover:brightness-110 cursor-pointer">
+        <div class="w-11 h-11 rounded-xl flex items-center justify-center" style="background:#1e1040">
+            <i class="fa-solid fa-wand-magic-sparkles text-violet-400 text-lg"></i>
+        </div>
+        <div>
+            <p class="text-xs text-gray-400 mb-0.5">AI Generations This Month</p>
+            <p class="text-xl font-bold text-white">{{ number_format($totalAiMonth) }}</p>
+            <p class="text-xs mt-0.5 {{ $aiChange >= 0 ? 'text-green-400' : 'text-red-400' }}">
+                <i class="fa-solid fa-arrow-{{ $aiChange >= 0 ? 'up' : 'down' }}"></i>
+                {{ abs($aiChange) }}% Than Last Month
+            </p>
+        </div>
+    </a>
 </div>
 
-{{-- Charts Row --}}
-<div class="grid grid-cols-3 gap-4 mb-6">
+{{-- Charts Row (all 3 in one row: bar chart takes 2/4 cols, each donut takes 1/4) --}}
+<div class="grid grid-cols-4 gap-4 mb-6">
     {{-- Bar Chart --}}
     <div class="card col-span-2 p-5">
         <div class="flex items-center justify-between mb-4">
@@ -95,7 +129,7 @@
         </div>
     </div>
 
-    {{-- Donut Chart --}}
+    {{-- Subscription Plans Donut --}}
     <div class="card p-5">
         <p class="font-semibold mb-4">Subscription Plans</p>
         <canvas id="planChart" height="160"></canvas>
@@ -113,6 +147,30 @@
             @if($planStats->isEmpty())
             <p class="text-gray-500 text-xs text-center">No subscription data yet</p>
             @endif
+        </div>
+    </div>
+
+    {{-- Subscribers Donut --}}
+    <div class="card p-5">
+        <p class="font-semibold mb-4">Subscribers</p>
+        <canvas id="subscriberChart" height="160" class="cursor-pointer"></canvas>
+        <div class="mt-4 space-y-2 text-sm">
+            <a href="{{ route('admin.subscriptions', ['status' => 'active']) }}"
+               class="flex items-center justify-between hover:text-white transition-colors">
+                <span class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full inline-block" style="background:#10b981"></span>
+                    Active Subscribers
+                </span>
+                <span class="text-gray-400">{{ number_format($activeSubscribers) }}</span>
+            </a>
+            <a href="{{ route('admin.subscriptions', ['status' => 'cancelled']) }}"
+               class="flex items-center justify-between hover:text-white transition-colors">
+                <span class="flex items-center gap-2">
+                    <span class="w-3 h-3 rounded-full inline-block" style="background:#f87171"></span>
+                    Cancelled Subscribers
+                </span>
+                <span class="text-gray-400">{{ number_format($cancelledSubscribers) }}</span>
+            </a>
         </div>
     </div>
 </div>
@@ -214,6 +272,30 @@ new Chart(document.getElementById('planChart'), {
         datasets: [{ data: planData.length ? planData : [1], backgroundColor: ['#ec4899','#6366f1','#10b981'], borderWidth: 0, hoverOffset: 6 }]
     },
     options: { cutout: '70%', plugins: { legend: { display: false } } }
+});
+
+// Subscribers chart: Active vs Cancelled. Clicking a segment opens the
+// Total Subscriber page filtered to that status.
+const subscriberChart = new Chart(document.getElementById('subscriberChart'), {
+    type: 'doughnut',
+    data: {
+        labels: ['Active Subscribers', 'Cancelled Subscribers'],
+        datasets: [{
+            data: [{{ $activeSubscribers }}, {{ $cancelledSubscribers }}],
+            backgroundColor: ['#10b981', '#f87171'],
+            borderWidth: 0,
+            hoverOffset: 6
+        }]
+    },
+    options: {
+        cutout: '70%',
+        plugins: { legend: { display: false } },
+        onClick: (evt, elements) => {
+            if (!elements.length) return;
+            const status = elements[0].index === 0 ? 'active' : 'cancelled';
+            window.location.href = "{{ route('admin.subscriptions') }}?status=" + status;
+        }
+    }
 });
 </script>
 @endpush

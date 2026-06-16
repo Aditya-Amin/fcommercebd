@@ -1,6 +1,23 @@
 import type { Plan, PlanId } from "./types";
 
+export const FREE_TRIAL_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
+
 export const PLANS: Record<PlanId, Plan> = {
+  free: {
+    id: "free",
+    name: "Free Trial",
+    price: 0,
+    currency: "৳",
+    tagline: "নতুন ব্যবহারকারীদের জন্য ১ মাসের বিনামূল্যে ট্রায়াল।",
+    features: [
+      { label: "মাসে ১০টি প্রমোশনাল SMS", included: true },
+      { label: "মাসে ৩টি AI পোস্ট জেনারেশন", included: true },
+      { label: "ফেসবুক পোস্ট করার সুবিধা", included: false },
+      { label: "Steadfast ও Pathao কুরিয়ার", included: false },
+      { label: "প্রায়োরিটি সাপোর্ট", included: false }
+    ],
+    limits: { aiGenerations: 3, sms: 10, fbPosts: 0 }
+  },
   starter: {
     id: "starter",
     name: "Starter",
