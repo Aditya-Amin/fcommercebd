@@ -211,7 +211,7 @@
 
     // ── Notification system ───────────────────────────────────────────────────
 
-    const NOTIF_POLL_MS = 30000; // 30 s
+    const NOTIF_POLL_MS = 10000; // 10 s — near real-time without WebSockets
     const CSRF = document.querySelector('meta[name="csrf-token"]')?.content ?? '';
 
     const colorMap = {
@@ -368,9 +368,23 @@
             .replace(/"/g, '&quot;');
     }
 
-    // Boot: initial poll + repeat
+    // Boot: poll the unread badge every 10s, but skip ticks while the tab is
+    // hidden (no point hammering the server for a badge nobody can see) and
+    // fire an immediate catch-up the moment the tab regains focus. If the
+    // dropdown is open we refresh the whole list so items appear live too.
+    function tick() {
+        if (document.hidden) return;
+        const panel = document.getElementById('notif-panel');
+        if (panel && !panel.classList.contains('hidden')) {
+            loadNotifications();
+        } else {
+            pollUnreadCount();
+        }
+    }
+
     pollUnreadCount();
-    setInterval(pollUnreadCount, NOTIF_POLL_MS);
+    setInterval(tick, NOTIF_POLL_MS);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) tick(); });
 </script>
 
 @stack('scripts')

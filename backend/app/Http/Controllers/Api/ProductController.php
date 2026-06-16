@@ -12,7 +12,7 @@ use App\Models\Product;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\URL;
 
 class ProductController extends Controller
 {
@@ -143,17 +143,26 @@ class ProductController extends Controller
 
     /**
      * POST /api/products/upload-image — upload a single image, returns hosted URL.
+     *
+     * Files are stored directly inside public/uploads/products/ so they are
+     * immediately accessible without requiring `php artisan storage:link`.
      */
     public function uploadImage(UploadImageRequest $request): JsonResponse
     {
         $file = $request->file('image');
-        $path = $file->store('products', 'public');
-        $url  = Storage::disk('public')->url($path);
+
+        $dir = public_path('uploads/products');
+        if (! is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $filename = $file->hashName();
+        $file->move($dir, $filename);
 
         return response()->json([
             'data' => [
-                'id'  => 'img_' . str_replace(['/', '.'], '_', $path),
-                'url' => $url,
+                'id'  => 'img_' . $filename,
+                'url' => URL::to('uploads/products/' . $filename),
             ],
         ], 201);
     }

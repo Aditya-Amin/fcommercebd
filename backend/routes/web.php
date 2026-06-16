@@ -71,7 +71,11 @@ Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
     // Support tickets
     Route::prefix('support')->name('support.')->group(function () {
         Route::get('/',                              [AdminSupportController::class, 'index'])->name('index');
+        // Presence — declared before /{ticket} so they aren't captured as ticket ids.
+        Route::post('/heartbeat',                    [AdminSupportController::class, 'heartbeat'])->name('heartbeat');
+        Route::post('/availability',                 [AdminSupportController::class, 'availability'])->name('availability');
         Route::get('/{ticket}',                      [AdminSupportController::class, 'show'])->name('show');
+        Route::get('/{ticket}/messages',             [AdminSupportController::class, 'messages'])->name('messages');
         Route::post('/{ticket}/reply',               [AdminSupportController::class, 'reply'])->name('reply');
         Route::post('/{ticket}/status',              [AdminSupportController::class, 'updateStatus'])->name('status');
     });

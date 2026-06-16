@@ -93,6 +93,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/support/tickets',                              [SupportController::class, 'index']);
     Route::post('/support/tickets',                             [SupportController::class, 'store']);
     Route::get('/support/tickets/{ticket}',                     [SupportController::class, 'show']);
+    Route::get('/support/tickets/{ticket}/messages',            [SupportController::class, 'messages']);
     Route::post('/support/tickets/{ticket}/messages',           [SupportController::class, 'reply']);
 });
 

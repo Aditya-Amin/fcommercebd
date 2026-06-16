@@ -12,6 +12,7 @@ class DatabaseSeeder extends Seeder
             PlanSeeder::class,
             CategorySeeder::class,
             SmsTestSeeder::class,   // test user with Growth plan + 45/300 SMS used
+            SuperAdminSeeder::class,
         ]);
     }
 }

@@ -15,12 +15,13 @@ const REASON_MESSAGES: Record<string, string> = {
   server_error: "সার্ভারে সমস্যা হয়েছে। সাপোর্টে যোগাযোগ করুন।"
 };
 
-export default function PaymentFailedPage({
+export default async function PaymentFailedPage({
   searchParams
 }: {
-  searchParams: SearchParams;
+  // Next.js 15+ makes searchParams a Promise — await before reading.
+  searchParams: Promise<SearchParams>;
 }) {
-  const reason = searchParams.reason ?? "failure";
+  const reason = (await searchParams).reason ?? "failure";
   const message = REASON_MESSAGES[reason] ?? REASON_MESSAGES.failure;
 
   return (

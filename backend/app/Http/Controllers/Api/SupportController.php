@@ -5,16 +5,22 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\SupportTicket;
 use App\Models\SupportMessage;
+use App\Services\Admin\AdminNotificationService;
+use App\Services\Support\SupportAssignmentService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class SupportController extends Controller
 {
+    public function __construct(private SupportAssignmentService $assignment)
+    {
+    }
+
     /** GET /api/support/tickets — list the authenticated user's tickets */
     public function index(Request $request): JsonResponse
     {
         $tickets = SupportTicket::where('user_id', $request->user()->id)
-            ->with(['messages' => fn ($q) => $q->latest('created_at')->limit(1)])
+            ->with(['assignedAdmin', 'messages' => fn ($q) => $q->latest('created_at')->limit(1)])
             ->latest('last_message_at')
             ->latest('created_at')
             ->get()
@@ -46,6 +52,13 @@ class SupportController extends Controller
             'message'           => $data['message'],
         ]);
 
+        // Route to the least-loaded online agent. If none are available the
+        // ticket stays 'open' + unassigned and waits in the shared queue.
+        $this->assignment->assign($ticket);
+
+        // Alert the admin dashboard so the notification bell picks it up.
+        AdminNotificationService::newSupportTicket($ticket);
+
         $ticket->load('messages');
 
         return response()->json(['data' => $this->ticketShape($ticket)], 201);
@@ -56,7 +69,7 @@ class SupportController extends Controller
     {
         abort_if($ticket->user_id !== $request->user()->id, 403);
 
-        $ticket->load('messages');
+        $ticket->load(['assignedAdmin', 'messages']);
 
         return response()->json(['data' => $this->ticketShape($ticket, true)]);
     }
@@ -83,6 +96,35 @@ class SupportController extends Controller
         return response()->json(['data' => $this->messageShape($msg)], 201);
     }
 
+    /**
+     * GET /api/support/tickets/{ticket}/messages?after_id=N
+     *
+     * Cursor delta endpoint that powers real-time chat without WebSockets.
+     * Returns only messages newer than the client's last-seen id (or all of
+     * them when after_id is omitted), so each poll is one tiny indexed range
+     * scan. Also returns the current status so the UI can lock the input when
+     * an agent resolves/closes the ticket.
+     */
+    public function messages(Request $request, SupportTicket $ticket): JsonResponse
+    {
+        abort_if($ticket->user_id !== $request->user()->id, 403);
+
+        $afterId = (int) $request->query('after_id', 0);
+
+        $messages = $ticket->messages()
+            ->when($afterId > 0, fn ($q) => $q->where('id', '>', $afterId))
+            ->orderBy('id')
+            ->get()
+            ->map(fn ($m) => $this->messageShape($m))
+            ->values()
+            ->all();
+
+        return response()->json([
+            'data'   => $messages,
+            'status' => $ticket->status,
+        ]);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private function ticketShape(SupportTicket $t, bool $withMessages = false): array
@@ -94,6 +136,7 @@ class SupportController extends Controller
             'ticket_id'       => $t->ticket_id,
             'subject'         => $t->subject,
             'status'          => $t->status,
+            'assigned_to'     => $t->relationLoaded('assignedAdmin') ? $t->assignedAdmin?->name : null,
             'last_message_at' => $t->last_message_at?->toIso8601String(),
             'created_at'      => $t->created_at->toIso8601String(),
             'last_message'    => $last ? mb_substr($last->message, 0, 80) : null,

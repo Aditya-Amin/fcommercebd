@@ -4,8 +4,10 @@ import { getProductCopy } from "@/lib/api/products";
 export default async function EditProductPage({
   params
 }: {
-  params: { id: string };
+  // Next.js 15+ makes params a Promise — it must be awaited before reading.
+  params: Promise<{ id: string }>;
 }) {
+  const { id } = await params;
   const copy = await getProductCopy();
-  return <ProductEditView id={params.id} copy={copy.form} />;
+  return <ProductEditView id={id} copy={copy.form} />;
 }

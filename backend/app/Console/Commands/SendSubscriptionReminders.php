@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Mail\SubscriptionRenewalMail;
 use App\Models\Subscription;
+use App\Services\Admin\AdminNotificationService;
 use App\Services\Sms\SmsService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Carbon;
@@ -72,13 +73,24 @@ class SendSubscriptionReminders extends Command
             dryRun: $dryRun,
         );
 
-        // Status reconciliation: any active subscription past expiry flips to expired.
+        // Status reconciliation: any active subscription past expiry flips to
+        // expired. Done row-by-row (not a bulk update) so each flip raises an
+        // admin notification for the dashboard bell.
         $reconciled = 0;
         if (! $dryRun) {
-            $reconciled = Subscription::query()
+            Subscription::query()
                 ->where('status', 'active')
                 ->where('expiry_date', '<=', $now)
-                ->update(['status' => 'expired']);
+                ->with(['user', 'plan'])
+                ->chunkById(100, function ($subs) use (&$reconciled) {
+                    foreach ($subs as $sub) {
+                        $sub->forceFill(['status' => 'expired'])->save();
+                        if ($sub->user) {
+                            AdminNotificationService::subscriptionExpired($sub->user, $sub);
+                        }
+                        $reconciled++;
+                    }
+                });
         }
 
         $this->info("Sent: 3d={$sent3d}, 1d={$sent1d}, expired={$sentExpired}; reconciled={$reconciled}");

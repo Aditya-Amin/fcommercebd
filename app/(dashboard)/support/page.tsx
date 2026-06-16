@@ -7,7 +7,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/context/AuthContext";
-import { getTickets, getTicket, createTicket, sendMessage } from "@/lib/api/support";
+import { getTickets, getTicket, createTicket, sendMessage, getNewMessages } from "@/lib/api/support";
 import type { SupportTicket, SupportMessage, TicketStatus } from "@/lib/types/support";
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
@@ -55,6 +55,22 @@ export default function SupportPage() {
 
   const chatBottomRef = useRef<HTMLDivElement>(null);
   const textareaRef   = useRef<HTMLTextAreaElement>(null);
+  // Highest message id the UI already holds — the cursor for delta polling.
+  const lastMsgIdRef  = useRef<number>(0);
+
+  // Append-only merge that ignores ids we've already rendered (handles the
+  // race between an optimistic send and the next poll returning the same row).
+  const mergeMessages = useCallback((incoming: SupportMessage[]) => {
+    if (incoming.length === 0) return;
+    setMessages(prev => {
+      const seen = new Set(prev.map(m => m.id));
+      const fresh = incoming.filter(m => !seen.has(m.id));
+      if (fresh.length === 0) return prev;
+      const next = [...prev, ...fresh].sort((a, b) => a.id - b.id);
+      lastMsgIdRef.current = next[next.length - 1].id;
+      return next;
+    });
+  }, []);
 
   // Load ticket list
   const loadTickets = useCallback(async () => {
@@ -72,10 +88,13 @@ export default function SupportPage() {
     setActiveTicket(t);
     setLoadingChat(true);
     setMessages([]);
+    lastMsgIdRef.current = 0;
     try {
       const full = await getTicket(t.id);
       setActiveTicket(full);
-      setMessages(full.messages ?? []);
+      const msgs = full.messages ?? [];
+      setMessages(msgs);
+      lastMsgIdRef.current = msgs.length ? msgs[msgs.length - 1].id : 0;
     } catch { /* silent */ }
     finally { setLoadingChat(false); }
   }, []);
@@ -85,18 +104,48 @@ export default function SupportPage() {
     chatBottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
-  // Poll for new messages when a ticket is open (every 8 s)
+  // Cursor delta polling: every 3s while the tab is focused, fetch only
+  // messages newer than the last id we hold. Pauses entirely when the tab is
+  // hidden (and fires one immediate catch-up poll the moment it regains focus)
+  // so a backgrounded chat costs the server nothing.
   useEffect(() => {
-    if (!activeTicket) return;
-    const id = setInterval(async () => {
+    const ticketId = activeTicket?.id;
+    if (!ticketId) return;
+
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    let stopped = false;
+
+    const poll = async () => {
+      if (stopped || document.hidden) return;
       try {
-        const full = await getTicket(activeTicket.id);
-        setMessages(full.messages ?? []);
-        setActiveTicket(full);
-      } catch { /* silent */ }
-    }, 8000);
-    return () => clearInterval(id);
-  }, [activeTicket?.id]);
+        const delta = await getNewMessages(ticketId, lastMsgIdRef.current);
+        mergeMessages(delta.data);
+        // Reflect agent-driven status changes (resolved/closed) live.
+        setActiveTicket(prev =>
+          prev && prev.id === ticketId && prev.status !== delta.status
+            ? { ...prev, status: delta.status }
+            : prev
+        );
+      } catch { /* silent — next tick retries */ }
+    };
+
+    const tick = () => {
+      timer = setTimeout(async () => {
+        await poll();
+        if (!stopped) tick();
+      }, 3000);
+    };
+
+    const onVisible = () => { if (!document.hidden) poll(); };
+    document.addEventListener("visibilitychange", onVisible);
+    tick();
+
+    return () => {
+      stopped = true;
+      if (timer) clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [activeTicket?.id, mergeMessages]);
 
   // Send a message
   async function handleSend() {
@@ -105,7 +154,7 @@ export default function SupportPage() {
     setSending(true);
     try {
       const msg = await sendMessage(activeTicket.id, newMsg.trim());
-      setMessages(prev => [...prev, msg]);
+      mergeMessages([msg]);
       setNewMsg("");
       // Update last_message in list
       setTickets(prev => prev.map(t =>
@@ -244,6 +293,11 @@ export default function SupportPage() {
                     ); })()}
                   </div>
                   <p className="text-sm font-semibold text-ink">{activeTicket.subject}</p>
+                  {activeTicket.assigned_to && (
+                    <p className="text-[11px] text-ink-muted">
+                      {activeTicket.assigned_to} is helping you
+                    </p>
+                  )}
                 </div>
               </div>
               <button

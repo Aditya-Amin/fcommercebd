@@ -9,7 +9,8 @@ return new class extends Migration {
     {
         Schema::table('categories', function (Blueprint $table) {
             // Nullable: NULL = system category (visible to everyone), int = user-owned category
-            $table->foreignId('user_id')->nullable()->after('id')->constrained()->nullOnDelete();
+            // NULL = system category (all users), int = user-owned (deleted with the user)
+            $table->foreignId('user_id')->nullable()->after('id')->constrained()->cascadeOnDelete();
 
             // Drop the global unique constraint on slug — slugs are now unique per-user
             // (system categories enforce uniqueness via the seeder + PHP checks)

@@ -6,6 +6,7 @@ use App\Models\AdminNotification;
 use App\Models\User;
 use App\Models\Subscription;
 use App\Models\Plan;
+use App\Models\SupportTicket;
 
 class AdminNotificationService
 {
@@ -88,6 +89,47 @@ class AdminNotificationService
                 'plan_id'         => $subscription->plan_id,
                 'plan_name'       => $planName,
                 'subscription_id' => $subscription->id,
+            ],
+        );
+    }
+
+    public static function subscriptionExpired(User $user, Subscription $subscription): void
+    {
+        $planName = $subscription->plan->name ?? 'their plan';
+
+        self::create(
+            type:       AdminNotification::TYPE_SUBSCRIPTION_EXPIRED,
+            title:      'Subscription Expired',
+            message:    "{$user->name}'s {$planName} subscription has expired.",
+            icon:       'fa-circle-xmark',
+            color:      'red',
+            actionUrl:  "/admin/users/{$user->id}/activity",
+            data:       [
+                'user_id'         => $user->id,
+                'plan_id'         => $subscription->plan_id,
+                'plan_name'       => $planName,
+                'subscription_id' => $subscription->id,
+            ],
+        );
+    }
+
+    public static function newSupportTicket(SupportTicket $ticket): void
+    {
+        $user = $ticket->user;
+        $who  = $user->name ?? 'A user';
+
+        self::create(
+            type:       AdminNotification::TYPE_SYSTEM,
+            title:      'New Support Ticket',
+            message:    "{$who} opened ticket {$ticket->ticket_id}: {$ticket->subject}",
+            icon:       'fa-headset',
+            color:      'blue',
+            actionUrl:  "/admin/support/{$ticket->id}",
+            data:       [
+                'ticket_id'    => $ticket->id,
+                'ticket_code'  => $ticket->ticket_id,
+                'user_id'      => $ticket->user_id,
+                'subject'      => $ticket->subject,
             ],
         );
     }

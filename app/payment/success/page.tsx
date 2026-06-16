@@ -9,11 +9,13 @@ interface SearchParams {
   plan?: string;
 }
 
-export default function PaymentSuccessPage({
+export default async function PaymentSuccessPage({
   searchParams
 }: {
-  searchParams: SearchParams;
+  // Next.js 15+ makes searchParams a Promise — await before reading.
+  searchParams: Promise<SearchParams>;
 }) {
+  const sp = await searchParams;
   return (
     <div className="w-full max-w-md rounded-2xl border border-border bg-white p-8 shadow-card">
       <RefreshUserOnMount />
@@ -27,18 +29,18 @@ export default function PaymentSuccessPage({
         আপনার সাবস্ক্রিপশন চালু হয়ে গেছে। এখন থেকে সব ফিচার ব্যবহার করতে পারবেন।
       </p>
 
-      {(searchParams.trxID || searchParams.paymentID) && (
+      {(sp.trxID || sp.paymentID) && (
         <dl className="mt-6 divide-y divide-border rounded-xl border border-border bg-bg/40 text-sm">
-          {searchParams.trxID && (
+          {sp.trxID && (
             <div className="flex items-center justify-between p-3">
               <dt className="text-ink-muted">ট্রানজেকশন আইডি</dt>
-              <dd className="font-mono text-ink">{searchParams.trxID}</dd>
+              <dd className="font-mono text-ink">{sp.trxID}</dd>
             </div>
           )}
-          {searchParams.paymentID && (
+          {sp.paymentID && (
             <div className="flex items-center justify-between p-3">
               <dt className="text-ink-muted">পেমেন্ট আইডি</dt>
-              <dd className="font-mono text-xs text-ink">{searchParams.paymentID}</dd>
+              <dd className="font-mono text-xs text-ink">{sp.paymentID}</dd>
             </div>
           )}
         </dl>

@@ -1,4 +1,4 @@
-import type { SupportTicket, SupportMessage } from "@/lib/types/support";
+import type { SupportTicket, SupportMessage, MessageDelta } from "@/lib/types/support";
 
 const BASE = process.env.NEXT_PUBLIC_LARAVEL_API_URL ?? "";
 
@@ -44,6 +44,19 @@ export async function createTicket(subject: string, message: string): Promise<Su
   });
   const body = await jsonOrThrow<{ data: SupportTicket }>(res);
   return body.data;
+}
+
+/**
+ * Cursor delta poll: fetch only messages newer than `afterId`.
+ * Pass 0 (or omit) to get the full thread. This is what the chat polls on an
+ * interval — each call is a tiny indexed range scan, returning [] most ticks.
+ */
+export async function getNewMessages(ticketId: number, afterId: number): Promise<MessageDelta> {
+  const res = await fetch(
+    `${BASE}/api/support/tickets/${ticketId}/messages?after_id=${afterId}`,
+    { headers: { Accept: "application/json", ...authHeaders() } }
+  );
+  return jsonOrThrow<MessageDelta>(res);
 }
 
 export async function sendMessage(ticketId: number, message: string): Promise<SupportMessage> {

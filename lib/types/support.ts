@@ -14,8 +14,15 @@ export interface SupportTicket {
   ticket_id:       string;
   subject:         string;
   status:          TicketStatus;
+  assigned_to:     string | null;
   last_message_at: string | null;
   created_at:      string;
   last_message:    string | null;
   messages?:       SupportMessage[];
+}
+
+/** Response of the cursor delta endpoint — only messages newer than after_id. */
+export interface MessageDelta {
+  data:   SupportMessage[];
+  status: TicketStatus;
 }
