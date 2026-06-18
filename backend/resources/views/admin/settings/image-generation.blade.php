@@ -76,9 +76,18 @@
 
                 <div id="api-key-section" class="{{ $selectedProvider === 'stub' ? 'hidden' : '' }}">
                     <label class="block text-xs font-medium text-gray-300 mb-1.5">API Key</label>
-                    <input type="password" name="api_key" value="{{ $settings['api_key'] ?? '' }}"
-                           placeholder="Enter your API key"
-                           class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-violet-500 max-w-md"/>
+                    <div class="relative max-w-md">
+                        <input type="password" name="api_key" id="api-key-input"
+                               value="{{ $settings['api_key'] ?? '' }}"
+                               placeholder="{{ $selectedProvider === 'replicate' ? 'r8_...' : 'sk-...' }}"
+                               autocomplete="new-password"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 pr-10 text-sm text-gray-200 font-mono focus:outline-none focus:border-violet-500"/>
+                        <button type="button" id="toggle-key-btn"
+                                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition"
+                                title="Show / hide key">
+                            <i class="fa-solid fa-eye" id="toggle-key-icon"></i>
+                        </button>
+                    </div>
                     <p class="mt-1 text-xs text-gray-500" id="api-key-hint">
                         @if($selectedProvider === 'openai') Your OpenAI secret key (sk-...)
                         @elseif($selectedProvider === 'replicate') Your Replicate API token (r8_...)
@@ -105,15 +114,35 @@
 @endsection
 
 @push('scripts')
+<div id="img-key-meta" data-has-key="{{ !empty($settings['api_key']) ? '1' : '0' }}" style="display:none"></div>
 <script>
+    var hasKey = document.getElementById('img-key-meta').dataset.hasKey === '1';
+
     document.querySelectorAll('input[name="provider"]').forEach(function(radio) {
         radio.addEventListener('change', function() {
             var isStub = this.value === 'stub';
             document.getElementById('api-key-section').classList.toggle('hidden', isStub);
             document.getElementById('stub-notice').classList.toggle('hidden', !isStub);
-            var hints = { openai: 'Your OpenAI secret key (sk-...)', replicate: 'Your Replicate API token (r8_...)' };
-            document.getElementById('api-key-hint').textContent = hints[this.value] || '';
+            var inp = document.getElementById('api-key-input');
+            var placeholders = { openai: 'sk-...', replicate: 'r8_...' };
+            if (inp) inp.placeholder = placeholders[this.value] || 'Enter your API key';
+            var hint = document.getElementById('api-key-hint');
+            if (hint && !hasKey) {
+                var hints = { openai: 'Your OpenAI secret key (sk-...)', replicate: 'Your Replicate API token (r8_...)' };
+                hint.textContent = hints[this.value] || '';
+            }
         });
     });
+
+    var toggleBtn  = document.getElementById('toggle-key-btn');
+    var toggleIcon = document.getElementById('toggle-key-icon');
+    var keyInput   = document.getElementById('api-key-input');
+    if (toggleBtn && keyInput) {
+        toggleBtn.addEventListener('click', function() {
+            var isHidden = keyInput.type === 'password';
+            keyInput.type = isHidden ? 'text' : 'password';
+            toggleIcon.className = isHidden ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+        });
+    }
 </script>
 @endpush

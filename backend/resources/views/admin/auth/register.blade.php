@@ -61,9 +61,13 @@
                 <label class="block text-sm text-gray-300 mb-1.5">Password</label>
                 <div class="relative">
                     <i class="fa-solid fa-lock absolute left-3.5 top-3.5 text-gray-500 text-sm"></i>
-                    <input type="password" name="password" required
-                           class="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-3 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                    <input id="password" type="password" name="password" required
+                           class="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-10 py-3 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                            placeholder="Min. 8 characters"/>
+                    <button type="button" onclick="togglePassword('password','eye-password')"
+                            class="absolute right-3 top-3 text-gray-500 hover:text-gray-300 focus:outline-none">
+                        <i id="eye-password" class="fa-solid fa-eye text-sm"></i>
+                    </button>
                 </div>
             </div>
 
@@ -71,9 +75,13 @@
                 <label class="block text-sm text-gray-300 mb-1.5">Confirm password</label>
                 <div class="relative">
                     <i class="fa-solid fa-lock absolute left-3.5 top-3.5 text-gray-500 text-sm"></i>
-                    <input type="password" name="password_confirmation" required
-                           class="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-4 py-3 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                    <input id="password_confirmation" type="password" name="password_confirmation" required
+                           class="w-full bg-gray-800 border border-gray-700 rounded-lg pl-10 pr-10 py-3 text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-violet-500 focus:border-transparent"
                            placeholder="Repeat password"/>
+                    <button type="button" onclick="togglePassword('password_confirmation','eye-confirm')"
+                            class="absolute right-3 top-3 text-gray-500 hover:text-gray-300 focus:outline-none">
+                        <i id="eye-confirm" class="fa-solid fa-eye text-sm"></i>
+                    </button>
                 </div>
             </div>
 
@@ -90,5 +98,15 @@
     </div>
 </div>
 
+<script>
+function togglePassword(inputId, iconId) {
+    const input = document.getElementById(inputId);
+    const icon  = document.getElementById(iconId);
+    const show  = input.type === 'password';
+    input.type  = show ? 'text' : 'password';
+    icon.classList.toggle('fa-eye', !show);
+    icon.classList.toggle('fa-eye-slash', show);
+}
+</script>
 </body>
 </html>

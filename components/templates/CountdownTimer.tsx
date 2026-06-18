@@ -40,21 +40,21 @@ export function CountdownTimer({ endDate }: { endDate: string }) {
 
   if (!timeLeft) {
     return (
-      <p className="text-center text-20 font-bold text-green-700">অফার শেষ হয়ে গেছে!</p>
+      <p className="text-center text-base font-bold text-green-700 sm:text-xl">অফার শেষ হয়ে গেছে!</p>
     );
   }
 
   const values = [timeLeft.days, timeLeft.hours, timeLeft.minutes, timeLeft.seconds];
 
   return (
-    <div className="flex justify-center gap-3">
+    <div className="flex justify-center gap-2 sm:gap-3">
       {UNITS.map((unit, i) => (
         <div
           key={unit}
-          className="flex min-w-[180px] min-h-[180px] flex-col justify-center items-center rounded-xl bg-green-600 px-3 py-3 text-white shadow"
+          className="flex w-[72px] flex-col items-center justify-center rounded-xl bg-green-600 py-3 text-white shadow sm:w-[100px] sm:py-4 md:w-[130px] md:py-5"
         >
-          <span className="text-5xl font-bold leading-none">{pad(values[i])}</span>
-          <span className="mt-1 text-[20px] font-medium">{unit}</span>
+          <span className="text-2xl font-bold leading-none sm:text-3xl md:text-4xl lg:text-5xl">{pad(values[i])}</span>
+          <span className="mt-1 text-[10px] font-medium sm:text-xs md:text-sm lg:text-base">{unit}</span>
         </div>
       ))}
     </div>

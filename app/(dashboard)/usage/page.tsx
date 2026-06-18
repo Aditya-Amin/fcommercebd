@@ -2,13 +2,15 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
-import { MessageSquare, RefreshCw, AlertCircle } from "lucide-react";
+import { MessageSquare, Sparkles, RefreshCw, AlertCircle } from "lucide-react";
 import { Card, CardBody, CardHeader } from "@/components/ui/Card";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { getSmsStats, getSmsLog } from "@/lib/api/sms";
+import { getAiUsage } from "@/lib/api/facebook";
 import type { SmsStats, SmsLogEntry } from "@/lib/types/sms";
+import type { FbPostsQuota } from "@/lib/types/facebook";
 
 // ─── Status badge ─────────────────────────────────────────────────────────────
 
@@ -37,7 +39,90 @@ function relativeTime(iso: string): string {
   return `${days}d ago`;
 }
 
-// ─── Quota card ───────────────────────────────────────────────────────────────
+// ─── AI quota card ────────────────────────────────────────────────────────────
+
+function AiQuotaCard({ quota }: { quota: FbPostsQuota }) {
+  if (quota.locked) {
+    return (
+      <Card>
+        <CardBody className="flex flex-col items-center gap-3 py-10 text-center">
+          <AlertCircle className="h-10 w-10 text-ink-muted" />
+          <p className="text-base font-semibold text-ink">AI not available</p>
+          <p className="text-sm text-ink-muted">
+            AI generation is not included in your current plan.
+          </p>
+          <Link
+            href="/pricing"
+            className="inline-flex h-8 items-center rounded-lg bg-primary px-3 text-sm font-medium text-white hover:bg-primary-600"
+          >
+            View Plans
+          </Link>
+        </CardBody>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader
+        title={
+          <span className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            AI Generations
+          </span>
+        }
+        description="Monthly AI post generation quota"
+      />
+      <CardBody className="space-y-5">
+        <div className="flex items-end justify-between">
+          <div>
+            <p className="text-3xl font-bold text-ink">
+              {quota.remaining.toLocaleString()}
+            </p>
+            <p className="text-sm text-ink-muted">
+              remaining of {quota.limit.toLocaleString()} generations
+            </p>
+          </div>
+          <p className="text-right text-sm text-ink-muted">
+            {quota.limit > 0 ? Math.round((quota.used / quota.limit) * 100) : 0}% used
+          </p>
+        </div>
+
+        <ProgressBar value={quota.used} max={Math.max(quota.limit, 1)} />
+
+        <div className="grid grid-cols-3 gap-4 rounded-xl bg-bg p-4 text-center text-sm">
+          <div>
+            <p className="font-semibold text-ink">{quota.limit.toLocaleString()}</p>
+            <p className="text-xs text-ink-muted">Total</p>
+          </div>
+          <div>
+            <p className="font-semibold text-ink">{quota.used.toLocaleString()}</p>
+            <p className="text-xs text-ink-muted">Used</p>
+          </div>
+          <div>
+            <p className="font-semibold text-ink">{quota.remaining.toLocaleString()}</p>
+            <p className="text-xs text-ink-muted">Remaining</p>
+          </div>
+        </div>
+
+        {quota.resetsAt && (
+          <p className="text-xs text-ink-muted">
+            Resets on{" "}
+            <span className="font-medium text-ink">
+              {new Date(quota.resetsAt).toLocaleDateString("en-GB", {
+                day: "numeric",
+                month: "long",
+                year: "numeric",
+              })}
+            </span>
+          </p>
+        )}
+      </CardBody>
+    </Card>
+  );
+}
+
+// ─── SMS quota card ───────────────────────────────────────────────────────────
 
 function QuotaCard({ stats }: { stats: SmsStats }) {
   if (!stats.has_active_plan) {
@@ -184,11 +269,25 @@ function LogTable({ logs, loading }: { logs: SmsLogEntry[]; loading: boolean }) 
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
+const QuotaSkeleton = () => (
+  <Card>
+    <CardBody className="py-10">
+      <div className="space-y-3">
+        <div className="h-8 w-40 animate-pulse rounded-lg bg-bg" />
+        <div className="h-3 w-full animate-pulse rounded-full bg-bg" />
+        <div className="h-3 w-2/3 animate-pulse rounded-full bg-bg" />
+      </div>
+    </CardBody>
+  </Card>
+);
+
 export default function UsagePage() {
-  const [stats,       setStats]       = useState<SmsStats | null>(null);
-  const [logs,        setLogs]        = useState<SmsLogEntry[]>([]);
-  const [statsError,  setStatsError]  = useState<string | null>(null);
+  const [stats,        setStats]        = useState<SmsStats | null>(null);
+  const [aiQuota,      setAiQuota]      = useState<FbPostsQuota | null>(null);
+  const [logs,         setLogs]         = useState<SmsLogEntry[]>([]);
+  const [statsError,   setStatsError]   = useState<string | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
+  const [loadingAi,    setLoadingAi]    = useState(true);
   const [loadingLogs,  setLoadingLogs]  = useState(true);
   const [refreshing,   setRefreshing]   = useState(false);
 
@@ -196,18 +295,22 @@ export default function UsagePage() {
     if (showRefresh) setRefreshing(true);
     else {
       setLoadingStats(true);
+      setLoadingAi(true);
       setLoadingLogs(true);
     }
 
     try {
-      const [s, l] = await Promise.all([
+      const [s, ai, l] = await Promise.all([
         getSmsStats().catch((e: Error) => { setStatsError(e.message); return null; }),
+        getAiUsage().catch(() => null),
         getSmsLog(20).catch(() => [] as SmsLogEntry[]),
       ]);
-      if (s) { setStats(s); setStatsError(null); }
+      if (s)  { setStats(s);   setStatsError(null); }
+      if (ai) { setAiQuota(ai); }
       setLogs(l ?? []);
     } finally {
       setLoadingStats(false);
+      setLoadingAi(false);
       setLoadingLogs(false);
       setRefreshing(false);
     }
@@ -221,7 +324,7 @@ export default function UsagePage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-ink">Usage Statistics</h1>
-          <p className="text-sm text-ink-muted">SMS quota and recent activity</p>
+          <p className="text-sm text-ink-muted">AI &amp; SMS quota and recent activity</p>
         </div>
         <Button
           variant="ghost"
@@ -234,17 +337,12 @@ export default function UsagePage() {
         </Button>
       </div>
 
-      {/* Quota card */}
+      {/* AI quota card */}
+      {loadingAi ? <QuotaSkeleton /> : aiQuota ? <AiQuotaCard quota={aiQuota} /> : null}
+
+      {/* SMS quota card */}
       {loadingStats ? (
-        <Card>
-          <CardBody className="py-10">
-            <div className="space-y-3">
-              <div className="h-8 w-40 animate-pulse rounded-lg bg-bg" />
-              <div className="h-3 w-full animate-pulse rounded-full bg-bg" />
-              <div className="h-3 w-2/3 animate-pulse rounded-full bg-bg" />
-            </div>
-          </CardBody>
-        </Card>
+        <QuotaSkeleton />
       ) : statsError ? (
         <Card>
           <CardBody className="flex items-center gap-3 py-6 text-sm text-danger">

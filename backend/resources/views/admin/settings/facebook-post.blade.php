@@ -84,11 +84,18 @@
                     <label class="block text-xs font-medium text-gray-300 mb-1.5">
                         API Key <span class="text-red-400">*</span>
                     </label>
-                    <input type="password" name="api_key" id="api-key-input"
-                           value=""
-                           placeholder="{{ $providers[$selectedProvider]['placeholder'] ?? 'sk-...' }}"
-                           autocomplete="new-password"
-                           class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 font-mono focus:outline-none focus:border-violet-500"/>
+                    <div class="relative">
+                        <input type="password" name="api_key" id="api-key-input"
+                               value="{{ $settings['api_key'] ?? '' }}"
+                               placeholder="{{ $providers[$selectedProvider]['placeholder'] ?? 'sk-...' }}"
+                               autocomplete="new-password"
+                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 pr-10 text-sm text-gray-200 font-mono focus:outline-none focus:border-violet-500"/>
+                        <button type="button" id="toggle-key-btn"
+                                class="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200 transition"
+                                title="Show / hide key">
+                            <i class="fa-solid fa-eye" id="toggle-key-icon"></i>
+                        </button>
+                    </div>
                     @php $hasKey = !empty($settings['api_key']); @endphp
                     <p class="mt-1 text-xs {{ $hasKey ? 'text-green-400' : 'text-gray-500' }}" id="api-key-hint">
                         @if($hasKey)
@@ -149,62 +156,69 @@
                 @endforeach
             </div>
 
-            {{-- ── Post Defaults ─────────────────────────────────────────── --}}
-            <div class="card p-5">
-                <h3 class="text-sm font-semibold text-white mb-1">Post Defaults</h3>
-                <p class="text-xs text-gray-400 mb-4">Default tone and posting behaviour for all users.</p>
-
-                <div class="mb-4">
-                    <p class="text-xs font-medium text-gray-300 mb-2">Default Tone</p>
-                    @php
-                        $tones = ['friendly'=>'Friendly','professional'=>'Professional','promo'=>'Promotional','festive'=>'Festive'];
-                        $selectedTone = $settings['default_tone'] ?? 'friendly';
-                    @endphp
-                    <div class="flex flex-wrap gap-2">
-                        @foreach($tones as $tid => $tlabel)
-                        <label class="cursor-pointer">
-                            <input type="radio" name="default_tone" value="{{ $tid }}" class="sr-only peer"
-                                   {{ $selectedTone === $tid ? 'checked' : '' }}>
-                            <span class="inline-block px-4 py-2 rounded-lg border text-sm font-medium transition cursor-pointer
-                                peer-checked:bg-violet-600 peer-checked:border-violet-600 peer-checked:text-white
-                                border-gray-600 text-gray-400 hover:border-violet-500/50 hover:text-gray-200">
-                                {{ $tlabel }}
-                            </span>
-                        </label>
-                        @endforeach
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-4">
+            {{-- ── AI Prompt Template ─────────────────────────────────────────── --}}
+            <div class="card p-5 mb-5">
+                <div class="flex items-start justify-between gap-3 mb-3">
                     <div>
-                        <label class="block text-xs font-medium text-gray-300 mb-1.5">Max Posts Per Day</label>
-                        <input type="number" name="max_posts_day" min="1" max="100"
-                               value="{{ $settings['max_posts_day'] ?? '25' }}"
-                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-violet-500"/>
-                        <p class="mt-1 text-xs text-gray-500">Per Facebook page per day.</p>
+                        <h3 class="text-sm font-semibold text-white">AI Prompt Instructions</h3>
+                        <p class="text-xs text-gray-400 mt-0.5">
+                            Write your AI instructions here. The product details, tone, and language chosen
+                            by the user on the frontend are <span class="text-violet-400 font-medium">automatically appended</span> — you don't need to add them.
+                        </p>
                     </div>
-                    <div>
-                        <label class="block text-xs font-medium text-gray-300 mb-1.5">Minimum Gap Between Posts (minutes)</label>
-                        <input type="number" name="min_gap_minutes" min="1"
-                               value="{{ $settings['min_gap_minutes'] ?? '5' }}"
-                               class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-violet-500"/>
-                    </div>
-                </div>
-
-                <div class="mt-5 pt-4 border-t border-gray-700/50">
-                    <button type="submit"
-                            class="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition">
-                        <i class="fa-solid fa-floppy-disk"></i> Save Settings
+                    <button type="button" id="reset-prompt-btn"
+                            class="shrink-0 text-xs text-gray-400 hover:text-violet-400 transition underline underline-offset-2 mt-0.5">
+                        Reset to default
                     </button>
                 </div>
+
+                {{-- What gets auto-appended --}}
+                <div class="mb-3 rounded-lg bg-gray-700/40 border border-gray-600/50 px-3 py-2.5 text-xs text-gray-400 space-y-1">
+                    <p class="text-gray-300 font-medium mb-1"><i class="fa-solid fa-arrow-down-to-line mr-1 text-violet-400"></i>Automatically appended from frontend:</p>
+                    <p><span class="text-violet-300 font-mono">Tone</span> — friendly / professional / promo / festive (user's choice)</p>
+                    <p><span class="text-violet-300 font-mono">Language</span> — English / Bengali / Banglish (user's choice)</p>
+                    <p><span class="text-violet-300 font-mono">Hashtags</span> — include or skip (user's choice)</p>
+                    <p><span class="text-violet-300 font-mono">Product data</span> — title, description, price, tags (from the selected product)</p>
+                </div>
+
+                @php $savedPrompt = $settings['ai_prompt_template'] ?? ''; @endphp
+                <textarea
+                    name="ai_prompt_template"
+                    id="ai-prompt-textarea"
+                    rows="12"
+                    placeholder="Leave blank to use the built-in default…"
+                    class="w-full bg-gray-800 border border-gray-600 rounded-lg px-3 py-2.5 text-xs text-gray-200 font-mono leading-relaxed focus:outline-none focus:border-violet-500 resize-y"
+                >{{ $savedPrompt }}</textarea>
+                <p class="mt-1.5 text-xs text-gray-500">
+                    <i class="fa-solid fa-circle-info mr-1"></i>
+                    Leave blank to use the built-in default. Click "Reset to default" to see what the default looks like.
+                </p>
+            </div>
+
+            <div class="mt-2">
+                <button type="submit"
+                        class="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium px-5 py-2.5 rounded-lg transition">
+                    <i class="fa-solid fa-floppy-disk"></i> Save Settings
+                </button>
             </div>
 
         </form>
     </div>
 </div>
 
+<div id="default-prompt-data" data-prompt="{{ $defaultPrompt }}" style="display:none"></div>
+
 <script>
 (function () {
+    // ── Reset prompt to default ───────────────────────────────────────────────
+    var defaultPrompt = document.getElementById('default-prompt-data').dataset.prompt;
+    var resetBtn = document.getElementById('reset-prompt-btn');
+    if (resetBtn) {
+        resetBtn.addEventListener('click', function () {
+            document.getElementById('ai-prompt-textarea').value = defaultPrompt;
+        });
+    }
+
     const providerHints = {
         deepseek:  'platform.deepseek.com → API Keys',
         anthropic: 'console.anthropic.com → API Keys',
@@ -266,6 +280,18 @@
             }
         });
     });
+
+    // ── Show / hide API key ───────────────────────────────────────────────────
+    var toggleBtn  = document.getElementById('toggle-key-btn');
+    var toggleIcon = document.getElementById('toggle-key-icon');
+    var keyInput   = document.getElementById('api-key-input');
+    if (toggleBtn && keyInput) {
+        toggleBtn.addEventListener('click', function () {
+            var hidden = keyInput.type === 'password';
+            keyInput.type = hidden ? 'text' : 'password';
+            toggleIcon.className = hidden ? 'fa-solid fa-eye-slash' : 'fa-solid fa-eye';
+        });
+    }
 })();
 </script>
 @endsection

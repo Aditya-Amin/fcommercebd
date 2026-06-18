@@ -8,6 +8,11 @@ export type NotificationType =
   | "sms_low"
   | "plan_limit"
   | "payment_success"
+  | "plan_activated"
+  | "sms_updated"
+  | "ai_updated"
+  | "fb_quota_updated"
+  | "usage_reset"
   | "system";
 
 export type NotificationPriority = "low" | "normal" | "high";

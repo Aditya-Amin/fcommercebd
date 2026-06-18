@@ -7,7 +7,7 @@ import type { TemplateConfig, FAQItem } from "@/lib/types";
 
 function getEmbedUrl(url: string): string | null {
   if (!url.trim()) return null;
-  const ytMatch = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([A-Za-z0-9_-]{11})/);
+  const ytMatch = url.match(/(?:youtube\.com\/(?:watch\?v=|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{11})/);
   if (ytMatch) return `https://www.youtube.com/embed/${ytMatch[1]}`;
   if (url.includes("facebook.com") && (url.includes("/video") || url.includes("/videos"))) {
     return `https://www.facebook.com/plugins/video.php?href=${encodeURIComponent(url)}&show_text=0&width=560`;

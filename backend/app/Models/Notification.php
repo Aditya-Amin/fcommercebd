@@ -19,6 +19,11 @@ class Notification extends Model
     public const TYPE_SMS_LOW            = 'sms_low';
     public const TYPE_PLAN_LIMIT         = 'plan_limit';
     public const TYPE_PAYMENT_SUCCESS    = 'payment_success';
+    public const TYPE_PLAN_ACTIVATED     = 'plan_activated';
+    public const TYPE_SMS_UPDATED        = 'sms_updated';
+    public const TYPE_AI_UPDATED         = 'ai_updated';
+    public const TYPE_FB_QUOTA_UPDATED   = 'fb_quota_updated';
+    public const TYPE_USAGE_RESET        = 'usage_reset';
     public const TYPE_SYSTEM             = 'system';
 
     public const PRIORITY_LOW    = 'low';

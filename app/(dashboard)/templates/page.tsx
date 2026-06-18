@@ -11,11 +11,14 @@ import {
   Eye,
   EyeOff,
   Package,
+  Save,
 } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { LandingTemplate } from "@/components/templates/LandingTemplate";
+import { PlanRequiredBanner } from "@/components/dashboard/PlanRequiredBanner";
+import { usePlan } from "@/context/PlanContext";
 import { useTemplate } from "@/context/TemplateContext";
 import { useToast } from "@/context/ToastContext";
 import { useAuth } from "@/context/AuthContext";
@@ -47,6 +50,7 @@ export default function TemplatesPage() {
   const { config, updateConfig, saveConfig } = useTemplate();
   const { toast } = useToast();
   const { user } = useAuth();
+  const { isPaidSubscriber } = usePlan();
 
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [copied, setCopied] = useState(false);
@@ -161,7 +165,7 @@ export default function TemplatesPage() {
     });
   }
 
-  // ── Save & open in new tab ─────────────────────────────────────────────────
+  // ── Save only ─────────────────────────────────────────────────────────────
   function handleSave() {
     if (!validate()) {
       toast("Please fix the errors before saving.", "error");
@@ -169,10 +173,17 @@ export default function TemplatesPage() {
     }
     const savedSlug = saveConfig(businessName);
     if (savedSlug) {
-      const url = `${window.location.origin}/${savedSlug}`;
-      window.open(url, "_blank", "noopener,noreferrer");
-      toast("Landing page saved! Opening in a new tab.", "success");
+      toast("Landing page saved successfully.", "success");
     }
+  }
+
+  // ── Preview in new tab ────────────────────────────────────────────────────
+  function handlePreview() {
+    if (!pageUrl) {
+      toast("Set your business name in Settings first.", "error");
+      return;
+    }
+    window.open(pageUrl, "_blank", "noopener,noreferrer");
   }
 
   // ── Copy URL ──────────────────────────────────────────────────────────────
@@ -186,6 +197,7 @@ export default function TemplatesPage() {
 
   return (
     <div>
+      <PlanRequiredBanner requirePaid />
       {/* Page header */}
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
@@ -573,15 +585,25 @@ export default function TemplatesPage() {
             </div>
           </Card>
 
-          {/* Save */}
+          {/* Save & Preview */}
           <div className="flex gap-3 pb-4">
             <Button
               variant="primary"
               className="flex-1"
               onClick={handleSave}
+              disabled={!isPaidSubscriber}
+            >
+              <Save className="h-4 w-4" />
+              Save
+            </Button>
+            <Button
+              variant="outline"
+              className="flex-1"
+              onClick={handlePreview}
+              disabled={!isPaidSubscriber}
             >
               <ExternalLink className="h-4 w-4" />
-              Save &amp; View My Page
+              Preview
             </Button>
           </div>
         </div>

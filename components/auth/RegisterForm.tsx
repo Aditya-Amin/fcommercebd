@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { Mail, Lock, User, Store, Phone } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock, User, Store, Phone } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/context/AuthContext";
@@ -42,6 +42,7 @@ export function RegisterForm({ copy }: Props) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -54,7 +55,7 @@ export function RegisterForm({ copy }: Props) {
       setError(copy.errors.passwordTooShort);
       return;
     }
-    if (requiresPayment && !BD_PHONE_RE.test(phone)) {
+    if (phone && !BD_PHONE_RE.test(phone)) {
       setError(copy.errors.invalidPhone);
       return;
     }
@@ -140,20 +141,17 @@ export function RegisterForm({ copy }: Props) {
           value={business}
           onChange={(e) => setBusiness(e.target.value)}
         />
-        {requiresPayment && (
-          <Input
-            name="phone"
-            label={copy.fields.phone.label}
-            placeholder={copy.fields.phone.placeholder}
-            hint={copy.fields.phone.hint}
-            leftIcon={<Phone className="h-4 w-4" />}
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            inputMode="numeric"
-            maxLength={11}
-            required
-          />
-        )}
+        <Input
+          name="phone"
+          label={copy.fields.phone.label}
+          placeholder={copy.fields.phone.placeholder}
+          hint={copy.fields.phone.hint}
+          leftIcon={<Phone className="h-4 w-4" />}
+          value={phone}
+          onChange={(e) => setPhone(e.target.value)}
+          inputMode="numeric"
+          maxLength={11}
+        />
         <Input
           name="email"
           type="email"
@@ -167,10 +165,15 @@ export function RegisterForm({ copy }: Props) {
         />
         <Input
           name="password"
-          type="password"
+          type={showPassword ? "text" : "password"}
           label={copy.fields.password.label}
           placeholder={copy.fields.password.placeholder}
           leftIcon={<Lock className="h-4 w-4" />}
+          rightIcon={
+            <button type="button" onClick={() => setShowPassword((v) => !v)} className="focus:outline-none">
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          }
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"

@@ -14,6 +14,7 @@ use App\Models\SteadfastConsignment;
 use App\Models\Subscription;
 use App\Models\User;
 use App\Services\Admin\AdminNotificationService;
+use App\Services\Notifications\NotificationService;
 use App\Services\Plans\PlanQuotaService;
 use App\Services\Sms\SmsBalanceService;
 use App\Services\Sms\SmsService;
@@ -267,6 +268,8 @@ class DashboardController extends Controller
         $user->fb_posts_limit_override = $data['fb_posts_limit_override'] ?? null;
         $user->save();
 
+        app(NotificationService::class)->fbQuotaUpdated($user, $user->fb_posts_limit_override);
+
         $msg = $user->fb_posts_limit_override === null
             ? "Post limit override removed — {$user->name} is back on their plan default."
             : "Post limit set to {$user->fb_posts_limit_override} for {$user->name}.";
@@ -284,6 +287,8 @@ class DashboardController extends Controller
         $user->fb_posts_reset_at = now();
         $user->save();
 
+        app(NotificationService::class)->usageReset($user, 'fb_posts');
+
         return back()->with('success', "Post usage reset for {$user->name} — they start this period fresh.");
     }
 
@@ -300,6 +305,10 @@ class DashboardController extends Controller
         $user->ai_generations_limit_override = $data['ai_generations_limit_override'] ?? null;
         $user->save();
 
+        if ($user->ai_generations_limit_override !== null) {
+            app(NotificationService::class)->aiQuotaUpdated($user, $user->ai_generations_limit_override);
+        }
+
         $msg = $user->ai_generations_limit_override === null
             ? "AI generation override removed — {$user->name} is back on their plan default."
             : "AI generation limit set to {$user->ai_generations_limit_override} for {$user->name}.";
@@ -314,6 +323,8 @@ class DashboardController extends Controller
     {
         $user->ai_generations_reset_at = now();
         $user->save();
+
+        app(NotificationService::class)->usageReset($user, 'ai');
 
         return back()->with('success', "AI generation usage reset for {$user->name} — they start this period fresh.");
     }
@@ -353,6 +364,8 @@ class DashboardController extends Controller
         $smsBalance->activate($subscription);
         AdminNotificationService::planAssigned($user, $subscription);
 
+        app(NotificationService::class)->planActivated($user, $plan->name, $days);
+
         return back()->with('success', "{$plan->name} plan activated for {$user->name} ({$days} days).");
     }
 
@@ -374,6 +387,8 @@ class DashboardController extends Controller
         $balance->total_sms = $data['total_sms'];
         $balance->save();
 
+        app(NotificationService::class)->smsQuotaUpdated($user, $data['total_sms']);
+
         return back()->with('success', "SMS limit set to {$data['total_sms']} for {$user->name}.");
     }
 
@@ -389,6 +404,8 @@ class DashboardController extends Controller
 
         $balance->used_sms = 0;
         $balance->save();
+
+        app(NotificationService::class)->usageReset($user, 'sms');
 
         return back()->with('success', "SMS usage reset to 0 for {$user->name}.");
     }

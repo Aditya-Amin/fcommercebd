@@ -20,6 +20,7 @@ import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Badge } from "@/components/ui/Badge";
 import { UpgradePrompt } from "@/components/dashboard/UpgradePrompt";
+import { PlanRequiredBanner } from "@/components/dashboard/PlanRequiredBanner";
 import { ProductPicker } from "@/components/facebook/ProductPicker";
 import { PostPreview } from "@/components/facebook/PostPreview";
 import { usePlan } from "@/context/PlanContext";
@@ -229,6 +230,7 @@ export default function AIGeneratePage() {
 
   return (
     <div className="space-y-6">
+      <PlanRequiredBanner />
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight text-ink">

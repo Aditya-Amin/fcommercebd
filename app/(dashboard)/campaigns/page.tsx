@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Modal } from "@/components/ui/Modal";
+import { PlanRequiredBanner } from "@/components/dashboard/PlanRequiredBanner";
 import { usePlan } from "@/context/PlanContext";
 import { useToast } from "@/context/ToastContext";
 import { delay } from "@/lib/utils";
@@ -65,6 +66,7 @@ export default function CampaignsPage() {
 
   return (
     <div className="space-y-6">
+      <PlanRequiredBanner />
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-ink">SMS Campaigns</h1>
         <p className="text-sm text-ink-muted">

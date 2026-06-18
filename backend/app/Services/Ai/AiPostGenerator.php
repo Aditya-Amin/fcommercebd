@@ -265,18 +265,32 @@ class AiPostGenerator
         return $this->parseAiOutput($text, $withTags);
     }
 
+    /**
+     * The default instruction block — admin can replace this from the settings page.
+     * The dynamic product data from the frontend is always appended automatically below it.
+     */
+    public const DEFAULT_PROMPT_TEMPLATE = <<<'TPL'
+You are a social-media copywriter writing a Facebook Page post for a small Bangladeshi
+e-commerce seller. Strictly follow Meta's content policies: no engagement bait
+("like and share to win"), no misleading claims, no excessive emojis (max 4),
+no all-caps shouting.
+
+Keep the caption under 600 characters. End with a clear call to action telling
+the customer to message the page to order.
+
+Return ONLY the caption text, then a blank line, then the hashtags (if any).
+No commentary, no markdown.
+TPL;
+
     private function buildPrompt(Product $product, string $tone, string $language, bool $withTags): string
     {
-        $info = [
-            'title'             => $product->title,
-            'short_description' => $product->short_description,
-            'description'       => $product->description,
-            'price'             => $product->price,
-            'currency'          => $product->currency ?? 'BDT',
-            'tags'              => $product->tags ?? [],
-        ];
-        $json = json_encode($info, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        // Admin's saved instructions (or the built-in default).
+        $instructions = trim((string) (Setting::get('facebook_post.ai_prompt_template') ?: ''));
+        if ($instructions === '') {
+            $instructions = self::DEFAULT_PROMPT_TEMPLATE;
+        }
 
+        // Dynamic data sent from the frontend — always appended automatically.
         $langInstr = match ($language) {
             'bn'    => 'Write the caption in Bengali (Bangla).',
             'mixed' => 'Write the caption in Banglish — Bengali words written in Latin script, mixed with English.',
@@ -284,28 +298,24 @@ class AiPostGenerator
         };
 
         $tagsInstr = $withTags
-            ? "Then list 4-6 relevant hashtags on a new line, prefixed with `#`."
-            : "Do NOT include hashtags.";
+            ? 'Then list 4–6 relevant hashtags on a new line, prefixed with #.'
+            : 'Do NOT include hashtags.';
 
-        return <<<PROMPT
-You are a social-media copywriter writing a Facebook Page post for a small Bangladeshi
-e-commerce seller. Strictly follow Meta's content policies: no engagement bait
-("like and share to win"), no misleading claims, no excessive emojis (max 4),
-no all-caps shouting.
+        $productData = json_encode([
+            'title'             => $product->title,
+            'short_description' => $product->short_description,
+            'description'       => $product->description,
+            'price'             => $product->price,
+            'currency'          => $product->currency ?? 'BDT',
+            'tags'              => $product->tags ?? [],
+        ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
-Tone: {$tone}.
-{$langInstr}
-{$tagsInstr}
-
-Keep the caption under 600 characters. End with a clear call to action telling
-the customer to message the page to order.
-
-Product:
-{$json}
-
-Return ONLY the caption text, then a blank line, then the hashtags (if any).
-No commentary, no markdown.
-PROMPT;
+        return $instructions . "\n\n" .
+               "--- Product data from the seller ---\n" .
+               "Tone: {$tone}\n" .
+               "Language: {$langInstr}\n" .
+               "Hashtags: {$tagsInstr}\n\n" .
+               $productData;
     }
 
     private function parseAiOutput(string $text, bool $withTags): array

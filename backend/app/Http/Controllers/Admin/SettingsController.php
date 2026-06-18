@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Setting;
+use App\Services\Ai\AiPostGenerator;
 use Illuminate\Http\Request;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -27,8 +28,12 @@ class SettingsController extends Controller
         ]);
 
         Setting::set('image.provider',   $data['provider']);
-        Setting::set('image.api_key',    $data['api_key'] ?? '');
         Setting::set('image.image_size', $data['image_size']);
+
+        // Only overwrite the key when a new non-empty value is submitted
+        if (!empty($data['api_key'])) {
+            Setting::set('image.api_key', $data['api_key']);
+        }
 
         return back()->with('success', 'Image generation settings saved.');
     }
@@ -37,19 +42,18 @@ class SettingsController extends Controller
 
     public function facebookPost(): View
     {
-        $settings = Setting::getGroup('facebook_post');
-        return view('admin.settings.facebook-post', compact('settings'));
+        $settings        = Setting::getGroup('facebook_post');
+        $defaultPrompt   = AiPostGenerator::DEFAULT_PROMPT_TEMPLATE;
+        return view('admin.settings.facebook-post', compact('settings', 'defaultPrompt'));
     }
 
     public function saveFacebookPost(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'provider'        => ['required', 'in:stub,deepseek,anthropic,openai'],
-            'api_key'         => ['nullable', 'string', 'max:500'],
-            'ai_model'        => ['required', 'string', 'max:100'],
-            'default_tone'    => ['required', 'in:friendly,professional,promo,festive'],
-            'max_posts_day'   => ['required', 'integer', 'min:1', 'max:100'],
-            'min_gap_minutes' => ['required', 'integer', 'min:1', 'max:1440'],
+            'provider'           => ['required', 'in:stub,deepseek,anthropic,openai'],
+            'api_key'            => ['nullable', 'string', 'max:500'],
+            'ai_model'           => ['required', 'string', 'max:100'],
+            'ai_prompt_template' => ['nullable', 'string', 'max:5000'],
         ]);
 
         Setting::set('facebook_post.provider', $data['provider']);
@@ -59,10 +63,10 @@ class SettingsController extends Controller
             Setting::set('facebook_post.api_key', $data['api_key']);
         }
 
-        Setting::set('facebook_post.ai_model',        $data['ai_model']);
-        Setting::set('facebook_post.default_tone',    $data['default_tone']);
-        Setting::set('facebook_post.max_posts_day',   $data['max_posts_day']);
-        Setting::set('facebook_post.min_gap_minutes', $data['min_gap_minutes']);
+        Setting::set('facebook_post.ai_model', $data['ai_model']);
+
+        // Save custom prompt — blank means "use the built-in default"
+        Setting::set('facebook_post.ai_prompt_template', trim($data['ai_prompt_template'] ?? ''));
 
         return back()->with('success', 'Facebook post settings saved.');
     }

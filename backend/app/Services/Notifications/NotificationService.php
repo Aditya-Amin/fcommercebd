@@ -123,4 +123,85 @@ class NotificationService
             priority:  Notification::PRIORITY_LOW,
         );
     }
+
+    public function planActivated(User $user, string $planName, int $days): Notification
+    {
+        return $this->notify(
+            user:      $user,
+            type:      Notification::TYPE_PLAN_ACTIVATED,
+            title:     'Plan activated',
+            message:   "Your {$planName} plan has been activated for {$days} days. Enjoy your new features!",
+            data:      ['plan' => $planName, 'days' => $days],
+            actionUrl: '/plan-details',
+            icon:      'sparkles',
+            priority:  Notification::PRIORITY_HIGH,
+        );
+    }
+
+    public function smsQuotaUpdated(User $user, int $total): Notification
+    {
+        return $this->notify(
+            user:      $user,
+            type:      Notification::TYPE_SMS_UPDATED,
+            title:     'SMS quota updated',
+            message:   "Your SMS limit has been set to {$total} for this period.",
+            data:      ['total_sms' => $total],
+            actionUrl: '/campaigns',
+            icon:      'message-square',
+            priority:  Notification::PRIORITY_NORMAL,
+        );
+    }
+
+    public function aiQuotaUpdated(User $user, int $limit): Notification
+    {
+        return $this->notify(
+            user:      $user,
+            type:      Notification::TYPE_AI_UPDATED,
+            title:     'AI generation limit updated',
+            message:   "Your AI generation limit has been set to {$limit} for this period.",
+            data:      ['ai_limit' => $limit],
+            actionUrl: '/ai-generate',
+            icon:      'sparkles',
+            priority:  Notification::PRIORITY_NORMAL,
+        );
+    }
+
+    public function fbQuotaUpdated(User $user, ?int $limit): Notification
+    {
+        $message = $limit === null
+            ? 'Your Facebook post limit has been reset to your plan default.'
+            : "Your Facebook post limit has been set to {$limit} for this period.";
+
+        return $this->notify(
+            user:      $user,
+            type:      Notification::TYPE_FB_QUOTA_UPDATED,
+            title:     'Facebook post limit updated',
+            message:   $message,
+            data:      ['fb_limit' => $limit],
+            actionUrl: '/ai-generate',
+            icon:      'facebook',
+            priority:  Notification::PRIORITY_NORMAL,
+        );
+    }
+
+    public function usageReset(User $user, string $feature): Notification
+    {
+        $labels = [
+            'sms'          => 'SMS usage',
+            'ai'           => 'AI generation usage',
+            'fb_posts'     => 'Facebook post usage',
+        ];
+        $label = $labels[$feature] ?? $feature;
+
+        return $this->notify(
+            user:      $user,
+            type:      Notification::TYPE_USAGE_RESET,
+            title:     'Usage counter reset',
+            message:   "Your {$label} counter has been reset to 0. You start this period fresh.",
+            data:      ['feature' => $feature],
+            actionUrl: '/plan-details',
+            icon:      'check-circle',
+            priority:  Notification::PRIORITY_LOW,
+        );
+    }
 }

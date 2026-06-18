@@ -41,6 +41,8 @@ interface PlanState {
   usage: UsageStats;
   lastPurchase: PlanPurchase | null;
   isFreeTrial: boolean;
+  isTrialSubscription: boolean;
+  isPaidSubscriber: boolean;
   isTrialExpired: boolean;
   trialExpiresAt: number | null;
   setPlan: (id: PlanId) => void;
@@ -129,6 +131,11 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     if (serverPlanId === "starter" || serverPlanId === "growth") {
       setPlanIdState(serverPlanId);
       try { localStorage.setItem(PLAN_STORAGE_KEY, serverPlanId); } catch {}
+    } else if (serverPlanId) {
+      // Custom/unknown plan slug — use "starter" as the base so PlanId stays
+      // valid; effectivePlan below overrides name + limits from server.
+      setPlanIdState("starter");
+      try { localStorage.setItem(PLAN_STORAGE_KEY, "starter"); } catch {}
     } else if (!user.subscription && !user.lastSubscription) {
       // Never subscribed → free trial
       setPlanIdState("free");
@@ -177,9 +184,30 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     [user?.id]
   );
 
-  const plan = PLANS[planId];
+  // Merge server-side limits + name into the plan so all consumers see the
+  // correct values even when a custom plan is assigned via the admin panel.
+  const effectivePlan = useMemo<Plan>(() => {
+    const sub = user?.subscription;
+    if (!sub || planId === "free") return PLANS[planId];
+    const raw = sub.limits as Record<string, number> | null | undefined;
+    return {
+      ...PLANS[planId],
+      ...(sub.planName ? { name: sub.planName } : {}),
+      ...(sub.planPrice != null ? { price: sub.planPrice } : {}),
+      limits: {
+        aiGenerations: raw?.aiGenerations ?? PLANS[planId].limits.aiGenerations,
+        sms: raw?.sms ?? PLANS[planId].limits.sms,
+        fbPosts: raw?.fbPosts ?? PLANS[planId].limits.fbPosts,
+      },
+    };
+  }, [planId, user?.subscription]);
 
   const isFreeTrial = planId === "free";
+
+  // True when the user has a subscription but it's still a trial (not paid yet).
+  const isTrialSubscription = user?.subscription?.status === "trial";
+  // True only when the user has a paid (active) subscription.
+  const isPaidSubscriber = !isFreeTrial && !isTrialSubscription && (planId === "starter" || planId === "growth");
 
   const trialExpiresAt = useMemo<number | null>(() => {
     if (!isFreeTrial || !user?.createdAt) return null;
@@ -189,23 +217,23 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   const isTrialExpired = isFreeTrial && trialExpiresAt !== null && Date.now() > trialExpiresAt;
 
   const canUseAI = useCallback(
-    () => !isTrialExpired && plan.limits.aiGenerations > 0 && usage.aiUsed < plan.limits.aiGenerations,
-    [isTrialExpired, plan, usage.aiUsed]
+    () => !isTrialExpired && effectivePlan.limits.aiGenerations > 0 && usage.aiUsed < effectivePlan.limits.aiGenerations,
+    [isTrialExpired, effectivePlan, usage.aiUsed]
   );
 
   const canSendSMS = useCallback(
-    (count = 1) => !isTrialExpired && usage.smsUsed + count <= plan.limits.sms,
-    [isTrialExpired, plan.limits.sms, usage.smsUsed]
+    (count = 1) => !isTrialExpired && usage.smsUsed + count <= effectivePlan.limits.sms,
+    [isTrialExpired, effectivePlan.limits.sms, usage.smsUsed]
   );
 
   const canCreateFBPost = useCallback(
-    () => plan.limits.fbPosts > 0 && usage.fbPostsUsed < plan.limits.fbPosts,
-    [plan.limits.fbPosts, usage.fbPostsUsed]
+    () => effectivePlan.limits.fbPosts > 0 && usage.fbPostsUsed < effectivePlan.limits.fbPosts,
+    [effectivePlan.limits.fbPosts, usage.fbPostsUsed]
   );
 
   const fbPostsRemaining = useCallback(
-    () => Math.max(0, plan.limits.fbPosts - usage.fbPostsUsed),
-    [plan.limits.fbPosts, usage.fbPostsUsed]
+    () => Math.max(0, effectivePlan.limits.fbPosts - usage.fbPostsUsed),
+    [effectivePlan.limits.fbPosts, usage.fbPostsUsed]
   );
 
   const recordAIUse = useCallback(() => {
@@ -230,10 +258,12 @@ export function PlanProvider({ children }: { children: ReactNode }) {
   const value = useMemo<PlanState>(
     () => ({
       planId,
-      plan,
+      plan: effectivePlan,
       usage,
       lastPurchase,
       isFreeTrial,
+      isTrialSubscription,
+      isPaidSubscriber,
       isTrialExpired,
       trialExpiresAt,
       setPlan,
@@ -249,10 +279,12 @@ export function PlanProvider({ children }: { children: ReactNode }) {
     }),
     [
       planId,
-      plan,
+      effectivePlan,
       usage,
       lastPurchase,
       isFreeTrial,
+      isTrialSubscription,
+      isPaidSubscriber,
       isTrialExpired,
       trialExpiresAt,
       setPlan,

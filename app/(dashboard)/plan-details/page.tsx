@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sparkles, Check, RefreshCcw, ArrowUpRight } from "lucide-react";
 import Link from "next/link";
 import { Card, CardHeader } from "@/components/ui/Card";
@@ -13,12 +13,19 @@ import { PLAN_LIST } from "@/lib/plans";
 import { formatBDT, cn } from "@/lib/utils";
 import { getPlanIdBySlug } from "@/lib/api/bkash";
 import { startSslCommerzCheckout } from "@/lib/api/sslcommerz";
+import { getSmsStats } from "@/lib/api/sms";
 import type { PlanId } from "@/lib/types";
+import type { SmsStats } from "@/lib/types/sms";
 
 export default function PlanDetailsPage() {
   const { plan, planId, usage, resetUsage } = usePlan();
   const { toast } = useToast();
   const [redirectingTo, setRedirectingTo] = useState<PlanId | null>(null);
+  const [smsStats, setSmsStats] = useState<SmsStats | null>(null);
+
+  useEffect(() => {
+    getSmsStats().then(setSmsStats).catch(() => {});
+  }, []);
 
   async function handleSwitchPlan(target: PlanId) {
     if (target === planId || redirectingTo) return;
@@ -140,14 +147,18 @@ export default function PlanDetailsPage() {
             hint={
               plan.limits.aiGenerations
                 ? `${usage.aiUsed} / ${plan.limits.aiGenerations} used`
-                : "Not available on Starter"
+                : "Not available on this plan"
             }
           />
           <ProgressBar
-            value={usage.smsUsed}
-            max={plan.limits.sms}
+            value={smsStats?.used_sms ?? usage.smsUsed}
+            max={Math.max(smsStats?.total_sms ?? plan.limits.sms, 1)}
             label="SMS sent"
-            hint={`${usage.smsUsed} / ${plan.limits.sms} used`}
+            hint={
+              smsStats
+                ? `${smsStats.used_sms} / ${smsStats.total_sms} used${smsStats.reset_at ? ` · resets ${smsStats.reset_at}` : ""}`
+                : `${usage.smsUsed} / ${plan.limits.sms} used`
+            }
           />
         </div>
       </Card>

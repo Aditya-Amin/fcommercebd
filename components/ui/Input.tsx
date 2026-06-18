@@ -14,10 +14,11 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
   hint?: string;
   error?: string;
   leftIcon?: ReactNode;
+  rightIcon?: ReactNode;
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
-  { label, hint, error, leftIcon, className, id, ...rest },
+  { label, hint, error, leftIcon, rightIcon, className, id, ...rest },
   ref
 ) {
   const inputId = id ?? rest.name;
@@ -46,11 +47,17 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(function Input(
           className={cn(
             "h-10 w-full rounded-xl border border-border bg-white px-3 text-sm text-ink placeholder:text-ink-subtle transition focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20 disabled:cursor-not-allowed disabled:bg-bg",
             leftIcon && "pl-9",
+            rightIcon && "pr-9",
             error && "border-danger focus:border-danger focus:ring-danger/20",
             className
           )}
           {...rest}
         />
+        {rightIcon && (
+          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-ink-subtle">
+            {rightIcon}
+          </span>
+        )}
       </div>
       {(hint || error) && (
         <p className={cn("mt-1.5 text-xs", error ? "text-danger" : "text-ink-muted")}>

@@ -42,6 +42,11 @@ const TYPE_FALLBACK: Record<NotificationType, LucideIcon> = {
   sms_low: MessageSquare,
   plan_limit: Sparkles,
   payment_success: CreditCard,
+  plan_activated: Sparkles,
+  sms_updated: MessageSquare,
+  ai_updated: Sparkles,
+  fb_quota_updated: Facebook,
+  usage_reset: CheckCircle,
   system: Info
 };
 

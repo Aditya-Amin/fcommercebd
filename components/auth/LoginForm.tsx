@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, type FormEvent } from "react";
-import { Mail, Lock } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { useAuth } from "@/context/AuthContext";
@@ -18,6 +18,7 @@ export function LoginForm({ copy }: { copy: LoginCopy }) {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -60,10 +61,15 @@ export function LoginForm({ copy }: { copy: LoginCopy }) {
         />
         <Input
           name="password"
-          type="password"
+          type={showPassword ? "text" : "password"}
           label={copy.fields.password.label}
           placeholder={copy.fields.password.placeholder}
           leftIcon={<Lock className="h-4 w-4" />}
+          rightIcon={
+            <button type="button" onClick={() => setShowPassword((v) => !v)} className="focus:outline-none">
+              {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          }
           value={password}
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="current-password"

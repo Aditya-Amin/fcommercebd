@@ -1,11 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Save } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
-import { Button } from "@/components/ui/Button";
-import { Input } from "@/components/ui/Input";
-import { useToast } from "@/context/ToastContext";
 import { cn } from "@/lib/utils";
 
 const AI_MODELS = [
@@ -23,13 +19,6 @@ const AI_MODELS = [
     badgeColor: "bg-primary/10 text-primary",
     description: "Higher quality posts with better Bangla language support, storytelling, and tone control.",
   },
-];
-
-const POST_TONES = [
-  { id: "friendly", label: "Friendly" },
-  { id: "professional", label: "Professional" },
-  { id: "promo", label: "Promotional" },
-  { id: "festive", label: "Festive" },
 ];
 
 const STORAGE_KEY = "fcommerce.settings.facebook-post";
@@ -51,21 +40,13 @@ function saveSettings(data: object) {
 }
 
 export default function FacebookPostSettingsPage() {
-  const { toast } = useToast();
   const saved = loadSettings();
 
   const [aiModel, setAiModel] = useState<string>(saved?.aiModel ?? "claude-haiku-4-5");
-  const [defaultTone, setDefaultTone] = useState<string>(saved?.defaultTone ?? "friendly");
-  const [maxPostsPerDay, setMaxPostsPerDay] = useState<string>(saved?.maxPostsPerDay ?? "25");
-  const [minGapMinutes, setMinGapMinutes] = useState<string>(saved?.minGapMinutes ?? "5");
-  const [saving, setSaving] = useState(false);
 
-  async function handleSave() {
-    setSaving(true);
-    await new Promise((r) => setTimeout(r, 600));
-    saveSettings({ aiModel, defaultTone, maxPostsPerDay, minGapMinutes });
-    setSaving(false);
-    toast("Facebook post settings saved.", "success");
+  function handleModelChange(id: string) {
+    setAiModel(id);
+    saveSettings({ aiModel: id });
   }
 
   return (
@@ -80,7 +61,7 @@ export default function FacebookPostSettingsPage() {
           {AI_MODELS.map((m) => (
             <button
               key={m.id}
-              onClick={() => setAiModel(m.id)}
+              onClick={() => handleModelChange(m.id)}
               className={cn(
                 "flex w-full items-start gap-3 rounded-xl border-2 p-4 text-left transition",
                 aiModel === m.id
@@ -111,59 +92,6 @@ export default function FacebookPostSettingsPage() {
               </div>
             </button>
           ))}
-        </div>
-      </Card>
-
-      {/* Post Defaults */}
-      <Card>
-        <CardHeader title="Post Defaults" description="Default tone and posting behaviour for AI-generated posts." />
-        <div className="p-5 space-y-4">
-          <div>
-            <p className="mb-2 text-sm font-medium text-ink">Default Tone</p>
-            <div className="flex flex-wrap gap-2">
-              {POST_TONES.map((t) => (
-                <button
-                  key={t.id}
-                  onClick={() => setDefaultTone(t.id)}
-                  className={cn(
-                    "rounded-lg border px-4 py-2 text-sm font-medium transition",
-                    defaultTone === t.id
-                      ? "border-primary bg-primary text-white"
-                      : "border-border text-ink-muted hover:border-primary/40 hover:text-ink"
-                  )}
-                >
-                  {t.label}
-                </button>
-              ))}
-            </div>
-          </div>
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Input
-              label="Max Posts Per Day"
-              type="number"
-              placeholder="25"
-              value={maxPostsPerDay}
-              onChange={(e) => setMaxPostsPerDay(e.target.value)}
-              hint="Maximum Facebook posts allowed per day per page."
-            />
-            <Input
-              label="Minimum Gap Between Posts (minutes)"
-              type="number"
-              placeholder="5"
-              value={minGapMinutes}
-              onChange={(e) => setMinGapMinutes(e.target.value)}
-              hint="Cooldown period between consecutive posts."
-            />
-          </div>
-        </div>
-        <div className="flex justify-start border-t border-border bg-bg/50 px-5 py-3">
-          <Button
-            onClick={handleSave}
-            loading={saving}
-            leftIcon={<Save className="h-4 w-4" />}
-          >
-            {saving ? "Saving…" : "Save Facebook Post Settings"}
-          </Button>
         </div>
       </Card>
     </div>

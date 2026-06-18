@@ -26,7 +26,7 @@
 @endif
 
 {{-- Stats Cards --}}
-<div class="grid grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+<div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
     <a href="{{ route('admin.subscriptions') }}"
        class="card p-5 flex items-center gap-4 transition hover:-translate-y-0.5 hover:brightness-110 cursor-pointer">
         <div class="w-11 h-11 rounded-xl flex items-center justify-center" style="background:#1e2a45">
@@ -105,6 +105,30 @@
                 <i class="fa-solid fa-arrow-{{ $aiChange >= 0 ? 'up' : 'down' }}"></i>
                 {{ abs($aiChange) }}% Than Last Month
             </p>
+        </div>
+    </a>
+
+    <a href="{{ route('admin.subscriptions', ['status' => 'active']) }}"
+       class="card p-5 flex items-center gap-4 transition hover:-translate-y-0.5 hover:brightness-110 cursor-pointer">
+        <div class="w-11 h-11 rounded-xl flex items-center justify-center" style="background:#0d2e1a">
+            <i class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
+        </div>
+        <div>
+            <p class="text-xs text-gray-400 mb-0.5">Active Subscriber</p>
+            <p class="text-xl font-bold text-white">{{ number_format($activeSubscribers) }}</p>
+            <p class="text-xs text-emerald-400 mt-0.5"><i class="fa-solid fa-circle-dot"></i> Currently Active</p>
+        </div>
+    </a>
+
+    <a href="{{ route('admin.subscriptions', ['status' => 'cancelled']) }}"
+       class="card p-5 flex items-center gap-4 transition hover:-translate-y-0.5 hover:brightness-110 cursor-pointer">
+        <div class="w-11 h-11 rounded-xl flex items-center justify-center" style="background:#2e0d0d">
+            <i class="fa-solid fa-circle-xmark text-red-400 text-lg"></i>
+        </div>
+        <div>
+            <p class="text-xs text-gray-400 mb-0.5">Cancel Subscriber</p>
+            <p class="text-xl font-bold text-white">{{ number_format($cancelledSubscribers) }}</p>
+            <p class="text-xs text-red-400 mt-0.5"><i class="fa-solid fa-ban"></i> Cancelled</p>
         </div>
     </a>
 </div>
