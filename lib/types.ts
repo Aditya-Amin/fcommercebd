@@ -9,6 +9,7 @@ export interface Plan {
   features: { label: string; included: boolean }[];
   limits: {
     aiGenerations: number;
+    aiImages: number;
     sms: number;
     fbPosts: number;
   };
@@ -17,6 +18,7 @@ export interface Plan {
 
 export interface UsageStats {
   aiUsed: number;
+  aiImagesUsed: number;
   smsUsed: number;
   fbPostsUsed: number;
 }

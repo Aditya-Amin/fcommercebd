@@ -16,7 +16,7 @@ export const PLANS: Record<PlanId, Plan> = {
       { label: "Steadfast ও Pathao কুরিয়ার", included: false },
       { label: "প্রায়োরিটি সাপোর্ট", included: false }
     ],
-    limits: { aiGenerations: 3, sms: 10, fbPosts: 0 }
+    limits: { aiGenerations: 3, aiImages: 3, sms: 10, fbPosts: 0 }
   },
   starter: {
     id: "starter",
@@ -32,7 +32,7 @@ export const PLANS: Record<PlanId, Plan> = {
       { label: "মাসে ৫টি AI পোস্ট জেনারেশন", included: true },
       { label: "প্রায়োরিটি প্রসেসিং ও সাপোর্ট", included: false }
     ],
-    limits: { aiGenerations: 5, sms: 10, fbPosts: 30 }
+    limits: { aiGenerations: 5, aiImages: 5, sms: 10, fbPosts: 30 }
   },
   growth: {
     id: "growth",
@@ -49,7 +49,7 @@ export const PLANS: Record<PlanId, Plan> = {
       { label: "প্রায়োরিটি সাপোর্ট", included: true },
       { label: "বাল্ক প্রোডাক্ট আপলোড", included: true }
     ],
-    limits: { aiGenerations: 60, sms: 300, fbPosts: 300 },
+    limits: { aiGenerations: 60, aiImages: 20, sms: 300, fbPosts: 300 },
     highlight: true
   }
 };

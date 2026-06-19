@@ -36,7 +36,7 @@ import {
   getFbPostsQuota,
   getAiUsage
 } from "@/lib/api/facebook";
-import { generateImagePrompt, generateImage } from "@/lib/api/image";
+import { generateImagePrompt, generateImage, getAiImageUsage, type AiImageQuota } from "@/lib/api/image";
 import type { Product } from "@/lib/types/product";
 import type { AiGenerateResult, FacebookPage, FbPostsQuota } from "@/lib/types/facebook";
 
@@ -76,13 +76,18 @@ export default function AIGeneratePage() {
 
   // FB-post + AI-generation quotas come from the server (PlanQuotaService) so
   // admin overrides/resets reflect immediately — not the local PlanContext cache.
-  const [fbQuota, setFbQuota] = useState<FbPostsQuota | null>(null);
-  const [aiUsage, setAiUsage] = useState<FbPostsQuota | null>(null);
+  const [fbQuota, setFbQuota]           = useState<FbPostsQuota | null>(null);
+  const [aiUsage, setAiUsage]           = useState<FbPostsQuota | null>(null);
+  const [aiImageQuota, setAiImageQuota] = useState<AiImageQuota | null>(null);
+
   const refreshFbQuota = useCallback(() => {
     getFbPostsQuota().then(setFbQuota).catch(() => {});
   }, []);
   const refreshAiUsage = useCallback(() => {
     getAiUsage().then(setAiUsage).catch(() => {});
+  }, []);
+  const refreshAiImageQuota = useCallback(() => {
+    getAiImageUsage().then(setAiImageQuota).catch(() => {});
   }, []);
 
   // editable preview
@@ -104,10 +109,18 @@ export default function AIGeneratePage() {
 
   // AI-generation quota — server values only. While the API is in flight
   // (aiUsage === null) we show nothing rather than stale localStorage numbers.
-  const aiLimit = aiUsage?.limit ?? 0;
-  const aiUsedCount = aiUsage?.used ?? 0;
-  const isLocked = aiUsage?.locked ?? false;
+  const aiLimit      = aiUsage?.limit ?? 0;
+  const aiUsedCount  = aiUsage?.used ?? 0;
+  const isLocked     = aiUsage?.locked ?? false;
   const limitReached = aiUsage ? (!aiUsage.locked && aiUsage.remaining <= 0) : false;
+
+  // AI Image quota — null means still loading, so don't lock while in-flight.
+  const aiImageLocked       = aiImageQuota !== null && aiImageQuota.locked;
+  const aiImageLimitReached = aiImageQuota !== null && !aiImageQuota.locked && aiImageQuota.remaining <= 0;
+  const aiImageDisabled     = aiImageLocked || aiImageLimitReached;
+  const aiImageLimit        = aiImageQuota?.limit ?? 0;
+  const aiImageUsed         = aiImageQuota?.used ?? 0;
+  const aiImageRemaining    = aiImageQuota?.remaining ?? 0;
 
   // Facebook-posting quota — server values only.
   const fbLimit = fbQuota?.limit ?? 0;
@@ -128,7 +141,8 @@ export default function AIGeneratePage() {
       });
     refreshFbQuota();
     refreshAiUsage();
-  }, [refreshFbQuota, refreshAiUsage]);
+    refreshAiImageQuota();
+  }, [refreshFbQuota, refreshAiUsage, refreshAiImageQuota]);
 
   // When AI generates, mirror into editable fields.
   useEffect(() => {
@@ -285,6 +299,8 @@ export default function AIGeneratePage() {
     try {
       const url = await generateImage({ prompt: finalPrompt, image_url: getProductImageUrl() });
       setImgUrl(url);
+      refreshAiImageQuota();
+      window.dispatchEvent(new Event("usage:changed"));
       toast("Image edited!", "success");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Image editing failed";
@@ -308,6 +324,8 @@ export default function AIGeneratePage() {
       setImgPrompt(p);
       const url = await generateImage({ prompt: p, image_url: getProductImageUrl() });
       setImgUrl(url);
+      refreshAiImageQuota();
+      window.dispatchEvent(new Event("usage:changed"));
       toast("Image edited!", "success");
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Image editing failed";
@@ -336,10 +354,28 @@ export default function AIGeneratePage() {
         <div className="flex flex-wrap gap-2">
           {aiLimit > 0 && (
             <div className="rounded-xl border border-border bg-white px-4 py-2.5">
-              <p className="text-xs font-medium text-ink-muted">AI this month</p>
+              <p className="text-xs font-medium text-ink-muted">AI Post this month</p>
               <p className="text-sm font-semibold text-ink">
                 {aiUsedCount}
                 <span className="text-ink-muted"> / {aiLimit}</span>
+              </p>
+            </div>
+          )}
+          {aiImageLimit > 0 && (
+            <div
+              className={
+                "rounded-xl border px-4 py-2.5 " +
+                (aiImageLimitReached
+                  ? "border-danger/40 bg-danger/5"
+                  : aiImageRemaining <= 1
+                    ? "border-warning/40 bg-warning/5"
+                    : "border-border bg-white")
+              }
+            >
+              <p className="text-xs font-medium text-ink-muted">AI Image this month</p>
+              <p className="text-sm font-semibold text-ink">
+                {aiImageUsed}
+                <span className="text-ink-muted"> / {aiImageLimit}</span>
               </p>
             </div>
           )}
@@ -395,23 +431,45 @@ export default function AIGeneratePage() {
               title="1. Pick a product"
               description="The post will use this product's images and details."
               action={
-                <button
-                  onClick={() => {
-                    setShowImageSection((v) => !v);
-                    if (!showImageSection) {
-                      setTimeout(() => imageSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
-                    }
-                  }}
-                  className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
-                    showImageSection
-                      ? "border-primary bg-primary text-white shadow-sm"
-                      : "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"
-                  }`}
-                >
-                  <ImageIcon className="h-3.5 w-3.5" />
-                  Edit Image
-                  <ChevronUp className={`h-3 w-3 transition-transform duration-200 ${showImageSection ? "rotate-0" : "rotate-180"}`} />
-                </button>
+                <div className="flex flex-col items-end gap-1">
+                  <button
+                    onClick={() => {
+                      if (aiImageDisabled) {
+                        toast(
+                          aiImageLocked
+                            ? "AI Image generation is not available on your current plan. Upgrade to unlock it."
+                            : `Monthly AI Image limit reached (${aiImageUsed}/${aiImageLimit}). Upgrade for more.`,
+                          "error"
+                        );
+                        return;
+                      }
+                      setShowImageSection((v) => !v);
+                      if (!showImageSection) {
+                        setTimeout(() => imageSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+                      }
+                    }}
+                    className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
+                      aiImageDisabled
+                        ? "cursor-not-allowed border-border bg-bg text-ink-subtle opacity-60"
+                        : showImageSection
+                          ? "border-primary bg-primary text-white shadow-sm"
+                          : "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"
+                    }`}
+                  >
+                    {aiImageDisabled
+                      ? <Lock className="h-3.5 w-3.5" />
+                      : <ImageIcon className="h-3.5 w-3.5" />}
+                    Edit Image
+                    {!aiImageDisabled && (
+                      <ChevronUp className={`h-3 w-3 transition-transform duration-200 ${showImageSection ? "rotate-0" : "rotate-180"}`} />
+                    )}
+                  </button>
+                  {aiImageQuota && !aiImageLocked && (
+                    <span className={`text-[10px] font-medium ${aiImageLimitReached ? "text-danger" : "text-ink-muted"}`}>
+                      {aiImageUsed}/{aiImageLimit} images used
+                    </span>
+                  )}
+                </div>
               }
             />
             <div className="p-5">
@@ -593,10 +651,26 @@ export default function AIGeneratePage() {
                 )}
 
                 {/* Generate button */}
-                <div className="px-5 py-4">
+                <div className="px-5 py-4 space-y-3">
+                  {aiImageLimitReached && (
+                    <div className="flex items-start gap-2 rounded-lg border border-danger/30 bg-danger/5 p-3 text-xs text-ink">
+                      <Lock className="mt-0.5 h-4 w-4 shrink-0 text-danger" />
+                      <div>
+                        <p className="font-semibold">AI Image limit reached</p>
+                        <p className="mt-0.5 text-ink-muted">
+                          You've used {aiImageUsed}/{aiImageLimit} images this month.{" "}
+                          <Link href="/plan-details" className="font-semibold text-primary hover:underline">
+                            Upgrade your plan
+                          </Link>{" "}
+                          to generate more.
+                        </p>
+                      </div>
+                    </div>
+                  )}
                   <button
                     type="button"
                     disabled={
+                      aiImageDisabled ||
                       !imgTopic.trim() || generatingImg ||
                       (imgMode === "human" && (!imgPromptReady || !imgPrompt.trim()))
                     }
@@ -605,7 +679,11 @@ export default function AIGeneratePage() {
                   >
                     {generatingImg
                       ? <><Loader2 className="h-4 w-4 animate-spin" /> Editing image…</>
-                      : <><Sparkles className="h-4 w-4" /> {product ? "Edit Product Image" : "Generate Image"}</>}
+                      : aiImageLocked
+                        ? <><Lock className="h-4 w-4" /> Upgrade to generate images</>
+                        : aiImageLimitReached
+                          ? <><Lock className="h-4 w-4" /> Monthly limit reached</>
+                          : <><Sparkles className="h-4 w-4" /> {product ? "Edit Product Image" : "Generate Image"}</>}
                   </button>
                 </div>
               </div>

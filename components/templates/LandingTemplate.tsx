@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 import { ShoppingCart, CheckCircle, Phone, Star, Plus, Minus, Package } from "lucide-react";
 import { CountdownTimer } from "./CountdownTimer";
+import { FoodBeverageTemplate } from "./FoodBeverageTemplate";
 import type { TemplateConfig, FAQItem } from "@/lib/types";
 
 function getEmbedUrl(url: string): string | null {
@@ -114,6 +115,10 @@ function NagadLogo() {
 interface Props { config: TemplateConfig }
 
 export function LandingTemplate({ config }: Props) {
+  if (config.businessCategory === "food-beverage") {
+    return <FoodBeverageTemplate config={config} />;
+  }
+
   const orderFormRef = useRef<HTMLDivElement>(null);
   const [qty, setQty]                       = useState(1);
   const [paymentMethod, setPaymentMethod]   = useState<"cod"|"bkash"|"nagad"|"rocket">("cod");

@@ -23,6 +23,7 @@ import { Logo } from "@/components/ui/Logo";
 import { usePlan } from "@/context/PlanContext";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { getAiUsage } from "@/lib/api/facebook";
+import { getAiImageUsage, type AiImageQuota } from "@/lib/api/image";
 import { getSmsStats } from "@/lib/api/sms";
 import type { FbPostsQuota } from "@/lib/types/facebook";
 import type { SmsStats } from "@/lib/types/sms";
@@ -74,14 +75,18 @@ export function Sidebar({
   // Usage meters are server-truth only — never the local PlanContext cache.
   // A loading skeleton shows until the API resolves so the UI never flashes a
   // stale localStorage number on first paint. Refetched on navigation.
-  const [aiUsage, setAiUsage] = useState<FbPostsQuota | null>(null);
-  const [smsStats, setSmsStats] = useState<SmsStats | null>(null);
+  const [aiUsage, setAiUsage]           = useState<FbPostsQuota | null>(null);
+  const [aiImageUsage, setAiImageUsage] = useState<AiImageQuota | null>(null);
+  const [smsStats, setSmsStats]         = useState<SmsStats | null>(null);
 
   useEffect(() => {
     const refresh = () => {
       getAiUsage()
         .then(setAiUsage)
         .catch(() => setAiUsage(null));
+      getAiImageUsage()
+        .then(setAiImageUsage)
+        .catch(() => setAiImageUsage(null));
       getSmsStats()
         .then(setSmsStats)
         .catch(() => setSmsStats(null));
@@ -192,12 +197,23 @@ export function Sidebar({
                   <ProgressBar
                     value={aiUsage.used}
                     max={Math.max(aiUsage.limit, 1)}
-                    label="AI"
+                    label="AI Post"
                     hint={`${aiUsage.used}/${aiUsage.limit}`}
                   />
                 ) : (
-                  <UsageSkeleton label="AI" />
+                  <UsageSkeleton label="AI Post" />
                 )}
+                {aiImageUsage
+                  ? aiImageUsage.limit > 0 && (
+                    <ProgressBar
+                      value={aiImageUsage.used}
+                      max={aiImageUsage.limit}
+                      label="AI Image"
+                      hint={`${aiImageUsage.used}/${aiImageUsage.limit}`}
+                    />
+                  )
+                  : <UsageSkeleton label="AI Image" />
+                }
                 {smsStats ? (
                   <ProgressBar
                     value={smsStats.used_sms}

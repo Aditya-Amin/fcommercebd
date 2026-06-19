@@ -1,5 +1,53 @@
+import { PLANS } from "@/lib/plans";
+import type { PlanId, UsageStats } from "@/lib/types";
+
 const LARAVEL_API_URL = process.env.NEXT_PUBLIC_LARAVEL_API_URL;
 const USE_MOCK_API = !LARAVEL_API_URL || LARAVEL_API_URL.trim() === "";
+
+const PLAN_KEY  = "fcommerce.plan";
+const USAGE_KEY = "fcommerce.usage.v3";
+
+export interface AiImageQuota {
+  limit: number;
+  used: number;
+  remaining: number;
+  resetsAt: string;
+  locked: boolean;
+}
+
+export async function getAiImageUsage(): Promise<AiImageQuota> {
+  if (USE_MOCK_API) {
+    await new Promise((r) => setTimeout(r, 80));
+    if (typeof window === "undefined") {
+      return { limit: 0, used: 0, remaining: 0, resetsAt: new Date().toISOString(), locked: true };
+    }
+    const planId = (window.localStorage.getItem(PLAN_KEY) as PlanId | null) ?? "free";
+    const limit  = PLANS[planId]?.limits.aiImages ?? 0;
+    let used = 0;
+    try {
+      const raw = window.localStorage.getItem(USAGE_KEY);
+      if (raw) used = (JSON.parse(raw) as Partial<UsageStats>).aiImagesUsed ?? 0;
+    } catch { /* ignore */ }
+    const next = new Date();
+    next.setDate(1);
+    next.setHours(0, 0, 0, 0);
+    next.setMonth(next.getMonth() + 1);
+    return {
+      limit,
+      used,
+      remaining: Math.max(0, limit - used),
+      resetsAt: next.toISOString(),
+      locked: limit === 0,
+    };
+  }
+
+  const res = await fetch(`${LARAVEL_API_URL}/api/image/usage`, {
+    headers: { Accept: "application/json", ...authHeaders() },
+    credentials: "include",
+  });
+  const body = await jsonOrThrow<{ data: AiImageQuota }>(res);
+  return body.data;
+}
 
 function authHeaders(): Record<string, string> {
   if (typeof window === "undefined") return {};

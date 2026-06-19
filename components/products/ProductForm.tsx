@@ -1,9 +1,9 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect, useState, type FormEvent } from "react";
+import { useEffect, useState, type FormEvent, type KeyboardEvent } from "react";
 import Link from "next/link";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, X } from "lucide-react";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input, Textarea, Select } from "@/components/ui/Input";
@@ -37,7 +37,7 @@ interface FormState {
   stock: string;
   category: string;
   status: ProductStatus;
-  tags: string;
+  tags: string[];
   images: ProductImage[];
 }
 
@@ -51,7 +51,7 @@ function makeInitialState(initial?: Product): FormState {
     stock: initial ? String(initial.stock) : "",
     category: initial?.category ?? "",
     status: initial?.status ?? "active",
-    tags: initial?.tags.join(", ") ?? "",
+    tags: initial?.tags ?? [],
     images: initial?.images ?? []
   };
 }
@@ -63,6 +63,7 @@ export function ProductForm({ copy, mode, initial }: Props) {
   const [errors, setErrors] = useState<Partial<Record<keyof FormState, string>>>({});
   const [submitting, setSubmitting] = useState(false);
   const [categories, setCategories] = useState<Category[]>([]);
+  const [tagInput, setTagInput] = useState("");
 
   useEffect(() => {
     let cancelled = false;
@@ -86,6 +87,30 @@ export function ProductForm({ copy, mode, initial }: Props) {
     if (errors[key]) setErrors((e) => ({ ...e, [key]: undefined }));
   }
 
+  /* ── Tag helpers ──────────────────────────────────────────────────── */
+  function commitTag(raw: string) {
+    const tag = raw.trim().toLowerCase();
+    if (!tag) return;
+    if (!form.tags.includes(tag)) {
+      update("tags", [...form.tags, tag]);
+    }
+    setTagInput("");
+  }
+
+  function onTagKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === "Enter" || e.key === ",") {
+      e.preventDefault();
+      commitTag(tagInput);
+    } else if (e.key === "Backspace" && tagInput === "" && form.tags.length > 0) {
+      update("tags", form.tags.slice(0, -1));
+    }
+  }
+
+  function removeTag(tag: string) {
+    update("tags", form.tags.filter((t) => t !== tag));
+  }
+
+  /* ── Validation ──────────────────────────────────────────────────── */
   function validate(): boolean {
     const next: Partial<Record<keyof FormState, string>> = {};
     if (!form.title.trim()) next.title = copy.errors.titleRequired;
@@ -108,6 +133,12 @@ export function ProductForm({ copy, mode, initial }: Props) {
     e.preventDefault();
     if (!validate()) return;
 
+    // commit any tag still typed in the input box
+    const pendingTag = tagInput.trim().toLowerCase();
+    const finalTags = pendingTag && !form.tags.includes(pendingTag)
+      ? [...form.tags, pendingTag]
+      : form.tags;
+
     const payload: ProductFormPayload = {
       title: form.title.trim(),
       description: form.description.trim(),
@@ -118,10 +149,7 @@ export function ProductForm({ copy, mode, initial }: Props) {
       category: form.category,
       status: form.status,
       images: form.images,
-      tags: form.tags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean)
+      tags: finalTags,
     };
 
     setSubmitting(true);
@@ -145,12 +173,8 @@ export function ProductForm({ copy, mode, initial }: Props) {
 
   const isEdit = mode === "edit";
   const submitLabel = submitting
-    ? isEdit
-      ? copy.submit.updating
-      : copy.submit.creating
-    : isEdit
-      ? copy.submit.update
-      : copy.submit.create;
+    ? isEdit ? copy.submit.updating : copy.submit.creating
+    : isEdit ? copy.submit.update  : copy.submit.create;
 
   return (
     <form onSubmit={onSubmit} className="space-y-5">
@@ -290,14 +314,55 @@ export function ProductForm({ copy, mode, initial }: Props) {
                 }
                 options={PRODUCT_STATUSES.map((s) => ({ label: s.label, value: s.value }))}
               />
-              <Input
-                name="tags"
-                label={copy.fields.tags.label}
-                placeholder={copy.fields.tags.placeholder}
-                hint={copy.fields.tags.hint}
-                value={form.tags}
-                onChange={(e) => update("tags", e.target.value)}
-              />
+
+              {/* ── Multi-tag input ─────────────────────────────────── */}
+              <div>
+                <label className="mb-1.5 block text-sm font-medium text-ink">
+                  {copy.fields.tags.label}
+                </label>
+
+                {/* chips + text input inside one bordered box */}
+                <div
+                  className="flex min-h-[42px] flex-wrap items-center gap-1.5 rounded-xl border border-border bg-white px-2.5 py-1.5 transition focus-within:border-primary focus-within:ring-2 focus-within:ring-primary/20 cursor-text"
+                  onClick={(e) => {
+                    const inp = (e.currentTarget as HTMLDivElement).querySelector("input");
+                    inp?.focus();
+                  }}
+                >
+                  {form.tags.map((tag) => (
+                    <span
+                      key={tag}
+                      className="inline-flex items-center gap-1 rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary"
+                    >
+                      {tag}
+                      <button
+                        type="button"
+                        onClick={() => removeTag(tag)}
+                        className="ml-0.5 rounded-full p-0.5 text-primary/60 hover:bg-primary/20 hover:text-primary"
+                        aria-label={`Remove ${tag}`}
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </span>
+                  ))}
+
+                  <input
+                    type="text"
+                    value={tagInput}
+                    onChange={(e) => setTagInput(e.target.value)}
+                    onKeyDown={onTagKeyDown}
+                    onBlur={() => commitTag(tagInput)}
+                    placeholder={form.tags.length === 0 ? (copy.fields.tags.placeholder ?? "Add tags…") : ""}
+                    className="min-w-[80px] flex-1 bg-transparent text-sm text-ink placeholder:text-ink-subtle focus:outline-none"
+                  />
+                </div>
+
+                <p className="mt-1.5 text-xs text-ink-muted">
+                  Press <kbd className="rounded border border-border bg-bg px-1 py-0.5 font-mono text-[10px]">Enter</kbd>{" "}
+                  or <kbd className="rounded border border-border bg-bg px-1 py-0.5 font-mono text-[10px]">,</kbd>{" "}
+                  to add a tag. Backspace removes the last tag.
+                </p>
+              </div>
             </div>
           </Card>
 
