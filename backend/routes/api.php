@@ -6,6 +6,7 @@
 
 use App\Http\Controllers\Admin\PurchasesController;
 use App\Http\Controllers\Api\AiGenerateController;
+use App\Http\Controllers\Api\ImageGenerateController;
 use App\Http\Controllers\Api\SslCommerzController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\BkashController;
@@ -116,6 +117,11 @@ Route::middleware(['auth:sanctum', 'subscription.active'])->group(function () {
     // AI post generation from a product (creating a post is gated; reading the
     // quota meter at /ai/usage is not — see the always-on group above).
     Route::post('/ai/generate-post', [AiGenerateController::class, 'generate']);
+
+    // Image generation — prompt builder + async image generator.
+    Route::post('/image/generate-prompt',    [ImageGenerateController::class, 'generatePrompt']);
+    Route::post('/image/generate',           [ImageGenerateController::class, 'generate']);
+    Route::get('/image/status/{jobId}',      [ImageGenerateController::class, 'status']);
 
     // Steadfast Courier — credential management + delivery booking + status.
     Route::get('/steadfast/credentials',     [SteadfastController::class, 'showCredentials']);

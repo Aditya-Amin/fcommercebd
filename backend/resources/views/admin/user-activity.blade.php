@@ -101,7 +101,7 @@
             <p class="text-xs mt-1">
                 @if($fbOverridden)
                     <span class="px-2 py-0.5 rounded-full bg-violet-900/50 text-violet-300 text-[11px] font-medium">
-                        <i class="fa-solid fa-user-pen mr-1"></i>Custom limit: {{ $user->fb_posts_limit_override }}
+                        <i class="fa-solid fa-user-pen mr-1"></i>Custom limit: {{ $user->fb_posts_limit_override }}{{ $user->fb_posts_limit_duration_days ? ' · ' . $user->fb_posts_limit_duration_days . ' days' : '' }}
                     </span>
                 @else
                     <span class="text-gray-500">Using plan default limit.</span>
@@ -123,6 +123,13 @@
                        value="{{ $user->fb_posts_limit_override }}"
                        placeholder="Plan default"
                        class="w-40 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-violet-500"/>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-300 mb-1.5">Duration (days)</label>
+                <input type="number" name="fb_posts_limit_duration_days" min="1" max="3650"
+                       value="{{ $user->fb_posts_limit_duration_days }}"
+                       placeholder="e.g. 30"
+                       class="w-32 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-violet-500"/>
             </div>
             <button type="submit"
                     class="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition">
@@ -193,7 +200,7 @@
     </form>
 </div>
 
-{{-- ── AI Generation Limit ─────────────────────────────────────────────── --}}
+{{-- ── Image Generation Limit ───────────────────────────────────────────── --}}
 @php
     $aiOverridden = $user->ai_generations_limit_override !== null;
 @endphp
@@ -201,7 +208,7 @@
     <div class="flex items-start justify-between flex-wrap gap-4">
         <div>
             <h3 class="text-sm font-semibold text-white mb-1 flex items-center gap-2">
-                <i class="fa-solid fa-robot text-violet-400"></i> AI Generation Limit
+                <i class="fa-solid fa-image text-violet-400"></i> Image Generation Limit
             </h3>
             <p class="text-xs text-gray-400">
                 This period the user has generated
@@ -213,7 +220,7 @@
             <p class="text-xs mt-1">
                 @if($aiOverridden)
                     <span class="px-2 py-0.5 rounded-full bg-violet-900/50 text-violet-300 text-[11px] font-medium">
-                        <i class="fa-solid fa-user-pen mr-1"></i>Custom limit: {{ $user->ai_generations_limit_override }}
+                        <i class="fa-solid fa-user-pen mr-1"></i>Custom limit: {{ $user->ai_generations_limit_override }}{{ $user->ai_generations_limit_duration_days ? ' · ' . $user->ai_generations_limit_duration_days . ' days' : '' }}
                     </span>
                 @else
                     <span class="text-gray-500">Using plan default limit.</span>
@@ -229,11 +236,18 @@
         <form method="POST" action="{{ route('admin.users.ai-quota.update', $user) }}" class="flex items-end gap-2">
             @csrf
             <div>
-                <label class="block text-xs font-medium text-gray-300 mb-1.5">Custom generation limit</label>
+                <label class="block text-xs font-medium text-gray-300 mb-1.5">Custom image generation limit</label>
                 <input type="number" name="ai_generations_limit_override" min="0" max="100000"
                        value="{{ $user->ai_generations_limit_override }}"
                        placeholder="Plan default"
                        class="w-40 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-violet-500"/>
+            </div>
+            <div>
+                <label class="block text-xs font-medium text-gray-300 mb-1.5">Duration (days)</label>
+                <input type="number" name="ai_generations_limit_duration_days" min="1" max="3650"
+                       value="{{ $user->ai_generations_limit_duration_days }}"
+                       placeholder="e.g. 30"
+                       class="w-32 bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-violet-500"/>
             </div>
             <button type="submit"
                     class="inline-flex items-center gap-2 bg-violet-600 hover:bg-violet-700 text-white text-sm font-medium px-4 py-2 rounded-lg transition">
@@ -243,7 +257,7 @@
         </form>
 
         <form method="POST" action="{{ route('admin.users.ai-quota.reset', $user) }}"
-              onsubmit="return confirm('Reset {{ addslashes($user->name) }}\'s AI generation usage to 0 for this period?');"
+              onsubmit="return confirm('Reset {{ addslashes($user->name) }}\'s image generation usage to 0 for this period?');"
               class="ml-auto">
             @csrf
             <button type="submit"

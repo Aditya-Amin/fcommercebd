@@ -46,29 +46,6 @@
                 </div>
             </div>
 
-            {{-- Output Settings --}}
-            <div class="card p-5 mb-5">
-                <h3 class="text-sm font-semibold text-white mb-1">Output Settings</h3>
-                <p class="text-xs text-gray-400 mb-4">Configure generated image size.</p>
-                @php
-                    $sizes = ['512x512'=>'512 × 512','768x768'=>'768 × 768','1024x1024'=>'1024 × 1024'];
-                    $selectedSize = $settings['image_size'] ?? '1024x1024';
-                @endphp
-                <div class="flex flex-wrap gap-2">
-                    @foreach($sizes as $sid => $slabel)
-                    <label class="cursor-pointer">
-                        <input type="radio" name="image_size" value="{{ $sid }}" class="sr-only peer"
-                               {{ $selectedSize === $sid ? 'checked' : '' }}>
-                        <span class="inline-block px-4 py-2 rounded-lg border text-sm font-medium transition
-                            peer-checked:bg-violet-600 peer-checked:border-violet-600 peer-checked:text-white
-                            border-gray-600 text-gray-400 hover:border-violet-500/50 hover:text-gray-200">
-                            {{ $slabel }}
-                        </span>
-                    </label>
-                    @endforeach
-                </div>
-            </div>
-
             {{-- API Credentials --}}
             <div class="card p-5">
                 <h3 class="text-sm font-semibold text-white mb-1">API Credentials</h3>

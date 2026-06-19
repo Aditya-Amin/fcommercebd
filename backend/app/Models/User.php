@@ -20,8 +20,10 @@ class User extends Authenticatable
         'business',
         'phone',
         'fb_posts_limit_override',
+        'fb_posts_limit_duration_days',
         'fb_posts_reset_at',
         'ai_generations_limit_override',
+        'ai_generations_limit_duration_days',
         'ai_generations_reset_at',
     ];
 

@@ -157,8 +157,10 @@ class PlanQuotaService
 
     public function aiGenerationsLimit(User $user): int
     {
-        if ($user->ai_generations_limit_override !== null) {
-            return (int) $user->ai_generations_limit_override;
+        // Admin sets AI post generation limit via the "Facebook / AI Post Limit"
+        // field (fb_posts_limit_override) — one override covers both.
+        if ($user->fb_posts_limit_override !== null) {
+            return (int) $user->fb_posts_limit_override;
         }
 
         $plan = $this->planFor($user);

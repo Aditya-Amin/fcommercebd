@@ -262,10 +262,12 @@ class DashboardController extends Controller
     public function updateUserQuota(Request $request, User $user): RedirectResponse
     {
         $data = $request->validate([
-            'fb_posts_limit_override' => ['nullable', 'integer', 'min:0', 'max:100000'],
+            'fb_posts_limit_override'      => ['nullable', 'integer', 'min:0', 'max:100000'],
+            'fb_posts_limit_duration_days' => ['nullable', 'integer', 'min:1', 'max:3650'],
         ]);
 
-        $user->fb_posts_limit_override = $data['fb_posts_limit_override'] ?? null;
+        $user->fb_posts_limit_override      = $data['fb_posts_limit_override'] ?? null;
+        $user->fb_posts_limit_duration_days = $data['fb_posts_limit_duration_days'] ?? null;
         $user->save();
 
         app(NotificationService::class)->fbQuotaUpdated($user, $user->fb_posts_limit_override);
@@ -299,10 +301,12 @@ class DashboardController extends Controller
     public function updateUserAiQuota(Request $request, User $user): RedirectResponse
     {
         $data = $request->validate([
-            'ai_generations_limit_override' => ['nullable', 'integer', 'min:0', 'max:100000'],
+            'ai_generations_limit_override'      => ['nullable', 'integer', 'min:0', 'max:100000'],
+            'ai_generations_limit_duration_days' => ['nullable', 'integer', 'min:1', 'max:3650'],
         ]);
 
-        $user->ai_generations_limit_override = $data['ai_generations_limit_override'] ?? null;
+        $user->ai_generations_limit_override      = $data['ai_generations_limit_override'] ?? null;
+        $user->ai_generations_limit_duration_days = $data['ai_generations_limit_duration_days'] ?? null;
         $user->save();
 
         if ($user->ai_generations_limit_override !== null) {

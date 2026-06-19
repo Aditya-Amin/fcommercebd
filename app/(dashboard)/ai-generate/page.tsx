@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   Wand2,
   Sparkles,
@@ -12,7 +12,11 @@ import {
   Copy,
   AlertCircle,
   Facebook,
-  CheckCircle2
+  CheckCircle2,
+  ImageIcon,
+  ChevronUp,
+  Loader2,
+  Download
 } from "lucide-react";
 import { Card, CardHeader } from "@/components/ui/Card";
 import { Textarea, Select, Input } from "@/components/ui/Input";
@@ -32,6 +36,7 @@ import {
   getFbPostsQuota,
   getAiUsage
 } from "@/lib/api/facebook";
+import { generateImagePrompt, generateImage } from "@/lib/api/image";
 import type { Product } from "@/lib/types/product";
 import type { AiGenerateResult, FacebookPage, FbPostsQuota } from "@/lib/types/facebook";
 
@@ -83,6 +88,19 @@ export default function AIGeneratePage() {
   // editable preview
   const [caption, setCaption] = useState("");
   const [hashtags, setHashtags] = useState("");
+
+  // ── Image generation section ────────────────────────────────────────────────
+  const [showImageSection, setShowImageSection] = useState(false);
+  const imageSectionRef = useRef<HTMLDivElement>(null);
+  const [imgTopic, setImgTopic] = useState("");
+  const [imgLanguage, setImgLanguage] = useState<"en" | "bn">("en");
+  const [imgMode, setImgMode] = useState<"human" | "agentic">("human");
+  const [imgPrompt, setImgPrompt] = useState("");
+  const [imgPromptReady, setImgPromptReady] = useState(false);
+  const [generatingPrompt, setGeneratingPrompt] = useState(false);
+  const [generatingImg, setGeneratingImg] = useState(false);
+  const [imgUrl, setImgUrl] = useState<string | null>(null);
+  const [imgError, setImgError] = useState<string | null>(null);
 
   // AI-generation quota — server values only. While the API is in flight
   // (aiUsage === null) we show nothing rather than stale localStorage numbers.
@@ -225,6 +243,81 @@ export default function AIGeneratePage() {
     }
   }
 
+  async function handleGeneratePrompt() {
+    if (!imgTopic.trim()) {
+      toast("Enter a topic first.", "error");
+      return;
+    }
+    setGeneratingPrompt(true);
+    setImgPromptReady(false);
+    setImgUrl(null);
+    setImgError(null);
+    try {
+      const p = await generateImagePrompt({ topic: imgTopic, language: imgLanguage });
+      setImgPrompt(p);
+      setImgPromptReady(true);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to generate prompt";
+      setImgError(msg);
+      toast(msg, "error");
+    } finally {
+      setGeneratingPrompt(false);
+    }
+  }
+
+  function getProductImageUrl(): string | undefined {
+    if (!product) return undefined;
+    return (
+      product.images.find((img) => img.isPrimary)?.url ??
+      product.images[0]?.url
+    );
+  }
+
+  async function handleGenerateImage(promptOverride?: string) {
+    const finalPrompt = promptOverride ?? imgPrompt;
+    if (!finalPrompt.trim()) {
+      toast("No prompt available.", "error");
+      return;
+    }
+    setGeneratingImg(true);
+    setImgUrl(null);
+    setImgError(null);
+    try {
+      const url = await generateImage({ prompt: finalPrompt, image_url: getProductImageUrl() });
+      setImgUrl(url);
+      toast("Image edited!", "success");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Image editing failed";
+      setImgError(msg);
+      toast(msg, "error");
+    } finally {
+      setGeneratingImg(false);
+    }
+  }
+
+  async function handleAgenticGenerate() {
+    if (!imgTopic.trim()) {
+      toast("Enter an edit instruction first.", "error");
+      return;
+    }
+    setGeneratingImg(true);
+    setImgUrl(null);
+    setImgError(null);
+    try {
+      const p = await generateImagePrompt({ topic: imgTopic, language: imgLanguage });
+      setImgPrompt(p);
+      const url = await generateImage({ prompt: p, image_url: getProductImageUrl() });
+      setImgUrl(url);
+      toast("Image edited!", "success");
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Image editing failed";
+      setImgError(msg);
+      toast(msg, "error");
+    } finally {
+      setGeneratingImg(false);
+    }
+  }
+
   const selectedPage = pages.find((p) => p.id === pageId) ?? null;
   const noPagesConnected = pages.length === 0;
 
@@ -301,6 +394,25 @@ export default function AIGeneratePage() {
             <CardHeader
               title="1. Pick a product"
               description="The post will use this product's images and details."
+              action={
+                <button
+                  onClick={() => {
+                    setShowImageSection((v) => !v);
+                    if (!showImageSection) {
+                      setTimeout(() => imageSectionRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 50);
+                    }
+                  }}
+                  className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-xs font-semibold transition-all ${
+                    showImageSection
+                      ? "border-primary bg-primary text-white shadow-sm"
+                      : "border-primary/30 bg-primary/5 text-primary hover:bg-primary/10"
+                  }`}
+                >
+                  <ImageIcon className="h-3.5 w-3.5" />
+                  Edit Image
+                  <ChevronUp className={`h-3 w-3 transition-transform duration-200 ${showImageSection ? "rotate-0" : "rotate-180"}`} />
+                </button>
+              }
             />
             <div className="p-5">
               <ProductPicker
@@ -312,6 +424,193 @@ export default function AIGeneratePage() {
               />
             </div>
           </Card>
+
+          {/* ── Image generation section ── */}
+          {showImageSection && (
+            <div ref={imageSectionRef} className="rounded-2xl border border-border bg-surface shadow-card overflow-hidden">
+              {/* Header strip */}
+              <div className="flex items-center gap-2 border-b border-border bg-bg/60 px-5 py-3">
+                <ImageIcon className="h-4 w-4 text-primary" />
+                <span className="text-sm font-semibold text-ink">Edit Image</span>
+                <span className="ml-auto text-xs text-ink-muted">
+                  {product ? `Editing: ${product.title}` : "Select a product to edit its image"}
+                </span>
+              </div>
+
+              {/* Product base image preview */}
+              {product && getProductImageUrl() && (
+                <div className="flex items-center gap-3 border-b border-border bg-bg/40 px-5 py-3">
+                  <img
+                    src={getProductImageUrl()}
+                    alt={product.title}
+                    className="h-16 w-16 rounded-xl border border-border object-cover"
+                  />
+                  <div>
+                    <p className="text-xs font-semibold text-ink">{product.title}</p>
+                    <p className="mt-0.5 text-[11px] text-ink-muted">AI will edit this image based on your instructions</p>
+                  </div>
+                </div>
+              )}
+
+              <div className="divide-y divide-border">
+                {/* 01 / EDIT INSTRUCTION */}
+                <div className="px-5 py-4">
+                  <p className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-ink-muted">
+                    <span className="font-mono text-primary">01</span>
+                    <span className="h-px flex-1 bg-border" />
+                    EDIT INSTRUCTION
+                  </p>
+                  <textarea
+                    rows={2}
+                    placeholder="e.g. add a 20% discount badge, change background to white, add festive decorations"
+                    value={imgTopic}
+                    onChange={(e) => {
+                      setImgTopic(e.target.value);
+                      setImgPromptReady(false);
+                      setImgUrl(null);
+                    }}
+                    className="w-full resize-none rounded-xl border border-border bg-bg px-4 py-3 text-sm text-ink placeholder:text-ink-subtle focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
+                  />
+                </div>
+
+                {/* 02 / LANGUAGE */}
+                <div className="px-5 py-4">
+                  <p className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-ink-muted">
+                    <span className="font-mono text-primary">02</span>
+                    <span className="h-px flex-1 bg-border" />
+                    LANGUAGE
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {([
+                      { value: "en", label: "English" },
+                      { value: "bn", label: "বাংলা" },
+                    ] as const).map(({ value, label }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => { setImgLanguage(value); setImgPromptReady(false); }}
+                        className={`rounded-xl border px-5 py-2 text-sm font-medium transition-all ${
+                          imgLanguage === value
+                            ? "border-primary bg-primary text-white shadow-sm"
+                            : "border-border bg-transparent text-ink hover:border-primary/40 hover:bg-primary/5"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* 03 / MODE */}
+                <div className="px-5 py-4">
+                  <p className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-ink-muted">
+                    <span className="font-mono text-primary">03</span>
+                    <span className="h-px flex-1 bg-border" />
+                    MODE
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {([
+                      { value: "human",   label: "Human-in-loop",   desc: "You review & edit the instruction before applying." },
+                      { value: "agentic", label: "Agentic",         desc: "AI crafts the edit instruction and applies it directly." },
+                    ] as const).map(({ value, label, desc }) => (
+                      <button
+                        key={value}
+                        type="button"
+                        onClick={() => { setImgMode(value); setImgPromptReady(false); setImgUrl(null); }}
+                        className={`flex flex-col items-start rounded-xl border px-4 py-3 text-left transition-all ${
+                          imgMode === value
+                            ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                            : "border-border bg-transparent hover:border-primary/30 hover:bg-bg"
+                        }`}
+                      >
+                        <span className={`text-sm font-semibold ${imgMode === value ? "text-primary" : "text-ink"}`}>
+                          {label}
+                        </span>
+                        <span className="mt-0.5 text-[11px] text-ink-muted">{desc}</span>
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Human-in-loop prompt step */}
+                {imgMode === "human" && (
+                  <div className="px-5 py-4">
+                    <p className="mb-3 flex items-center gap-2 text-[11px] font-semibold uppercase tracking-widest text-ink-muted">
+                      <span className="font-mono text-primary">04</span>
+                      <span className="h-px flex-1 bg-border" />
+                      PROMPT PREVIEW
+                    </p>
+                    <button
+                      type="button"
+                      disabled={!imgTopic.trim() || generatingPrompt}
+                      onClick={handleGeneratePrompt}
+                      className="mb-3 inline-flex items-center gap-2 rounded-xl border border-border bg-bg px-4 py-2 text-sm font-medium text-ink transition hover:border-primary/40 hover:bg-primary/5 disabled:cursor-not-allowed disabled:opacity-50"
+                    >
+                      {generatingPrompt
+                        ? <><Loader2 className="h-4 w-4 animate-spin text-primary" /> Building edit prompt…</>
+                        : <><Wand2 className="h-4 w-4 text-primary" /> Build Edit Prompt</>}
+                    </button>
+                    {imgPromptReady && (
+                      <textarea
+                        rows={4}
+                        value={imgPrompt}
+                        onChange={(e) => setImgPrompt(e.target.value)}
+                        className="w-full resize-none rounded-xl border border-border bg-bg px-4 py-3 text-sm text-ink focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/15"
+                      />
+                    )}
+                  </div>
+                )}
+
+                {/* Error */}
+                {imgError && (
+                  <div className="flex items-start gap-2 px-5 py-3 text-xs text-danger">
+                    <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+                    <p>{imgError}</p>
+                  </div>
+                )}
+
+                {/* Result image */}
+                {(generatingImg || imgUrl) && (
+                  <div className="px-5 py-4">
+                    {generatingImg && !imgUrl
+                      ? <div className="h-56 w-full animate-pulse rounded-xl bg-bg" />
+                      : imgUrl && (
+                        <div className="space-y-3">
+                          <img src={imgUrl} alt="Generated" className="w-full rounded-xl border border-border object-cover" />
+                          <a
+                            href={imgUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download
+                            className="inline-flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-ink hover:bg-bg transition"
+                          >
+                            <Download className="h-3.5 w-3.5" /> Download image
+                          </a>
+                        </div>
+                      )
+                    }
+                  </div>
+                )}
+
+                {/* Generate button */}
+                <div className="px-5 py-4">
+                  <button
+                    type="button"
+                    disabled={
+                      !imgTopic.trim() || generatingImg ||
+                      (imgMode === "human" && (!imgPromptReady || !imgPrompt.trim()))
+                    }
+                    onClick={imgMode === "agentic" ? handleAgenticGenerate : () => handleGenerateImage()}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-primary px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-primary-600 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {generatingImg
+                      ? <><Loader2 className="h-4 w-4 animate-spin" /> Editing image…</>
+                      : <><Sparkles className="h-4 w-4" /> {product ? "Edit Product Image" : "Generate Image"}</>}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
 
           <Card>
             <CardHeader title="2. Style" description="Tone and language for the caption." />
