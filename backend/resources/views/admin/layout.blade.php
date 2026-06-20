@@ -57,6 +57,11 @@
             <i class="fa-solid fa-database w-4 text-center"></i> User Data
         </a>
 
+        <a href="{{ route('admin.plans.index') }}"
+           class="nav-item flex items-center gap-3 px-3 py-2.5 text-sm {{ request()->routeIs('admin.plans.*') ? 'active text-white' : 'text-gray-400' }}">
+            <i class="fa-solid fa-layer-group w-4 text-center"></i> Plans
+        </a>
+
         <a href="{{ route('admin.support.index') }}"
            class="nav-item flex items-center gap-3 px-3 py-2.5 text-sm {{ request()->routeIs('admin.support.*') ? 'active text-white' : 'text-gray-400' }}">
             <i class="fa-solid fa-headset w-4 text-center"></i>

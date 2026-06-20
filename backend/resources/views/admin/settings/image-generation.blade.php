@@ -15,6 +15,12 @@
             </div>
         @endif
 
+        @if($errors->any())
+            <div class="rounded-xl bg-red-900/40 border border-red-700/50 px-4 py-3 text-sm text-red-300">
+                <i class="fa-solid fa-triangle-exclamation"></i> {{ $errors->first() }}
+            </div>
+        @endif
+
         <form method="POST" action="{{ route('admin.settings.image-generation.save') }}">
             @csrf
 
@@ -25,7 +31,7 @@
                 @php
                     $providers = [
                         ['id'=>'stub',      'name'=>'Stub (No Key Required)', 'desc'=>'Local mock generator for development. Returns placeholder images instantly.'],
-                        ['id'=>'openai',    'name'=>'OpenAI DALL-E 3',        'desc'=>'High-quality AI image generation. Best for product visuals and banners.'],
+                        ['id'=>'openai',    'name'=>'OpenAI gpt-image-1',     'desc'=>'High-quality AI image generation. Best for product visuals and banners.'],
                         ['id'=>'replicate', 'name'=>'Replicate (Stable Diffusion)', 'desc'=>'Open-source models via Replicate API. Cost-effective for bulk generation.'],
                     ];
                     $selectedProvider = $settings['provider'] ?? 'stub';
@@ -43,6 +49,25 @@
                         </div>
                     </label>
                     @endforeach
+                </div>
+
+                @php
+                    $sizes = [
+                        '1024x1024' => 'Square (1024 × 1024)',
+                        '1024x1536' => 'Portrait (1024 × 1536)',
+                        '1536x1024' => 'Landscape (1536 × 1024)',
+                    ];
+                    $selectedSize = $settings['image_size'] ?? '1024x1024';
+                @endphp
+                <div class="mt-5 pt-4 border-t border-gray-700/40">
+                    <label class="block text-xs font-medium text-gray-300 mb-1.5">Image Size</label>
+                    <select name="image_size"
+                            class="w-full max-w-xs bg-gray-800 border border-gray-600 rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:border-violet-500">
+                        @foreach($sizes as $value => $label)
+                            <option value="{{ $value }}" {{ $selectedSize === $value ? 'selected' : '' }}>{{ $label }}</option>
+                        @endforeach
+                    </select>
+                    <p class="mt-1 text-xs text-gray-500">Used by OpenAI gpt-image-1. Replicate uses a fixed 1024 × 1024.</p>
                 </div>
             </div>
 

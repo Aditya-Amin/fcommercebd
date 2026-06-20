@@ -5,6 +5,7 @@ namespace App\Services\Ai;
 use App\Exceptions\AiUnavailableException;
 use App\Models\Product;
 use App\Models\Setting;
+use Composer\CaBundle\CaBundle;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 
@@ -23,6 +24,25 @@ use Illuminate\Support\Facades\Log;
 class AiPostGenerator
 {
     public function __construct(private readonly ?Client $http = null) {}
+
+    /**
+     * Guzzle client for provider calls. Pins the CA bundle explicitly so HTTPS
+     * verification works even when php.ini has no curl.cainfo set (common on
+     * Windows/Laragon) — otherwise every provider call dies with cURL error 60
+     * and silently falls back to the stub.
+     */
+    private function httpClient(): Client
+    {
+        if ($this->http) {
+            return $this->http;
+        }
+
+        return new Client([
+            'timeout'     => 30,
+            'http_errors' => false,
+            'verify'      => CaBundle::getSystemCaRootBundlePath(),
+        ]);
+    }
 
     /**
      * @param  array{tone?:string, language?:string, includeHashtags?:bool}  $options
@@ -77,8 +97,11 @@ class AiPostGenerator
             ]);
             throw $e;
         } catch (\Throwable $e) {
-            // Unexpected/transient failure (network, JSON, unknown 5xx). Fall back
-            // to the stub so the customer still gets a usable caption.
+            // Unexpected/transient failure (network, SSL, JSON, unknown 5xx). Fall
+            // back to the stub so the customer still gets a usable caption — but
+            // record it so the admin sees the provider is unhealthy instead of
+            // assuming AI is working when every call is silently stubbed.
+            $this->recordStatus('unavailable', $e->getMessage());
             Log::warning('ai.generate.failed', [
                 'provider' => $provider,
                 'error'    => $e->getMessage(),
@@ -183,7 +206,7 @@ class AiPostGenerator
 
     private function generateWithAnthropic(Product $product, string $tone, string $language, bool $withTags, string $apiKey, string $model = 'claude-haiku-4-5'): array
     {
-        $http  = $this->http ?? new Client(['timeout' => 30, 'http_errors' => false]);
+        $http  = $this->httpClient();
 
         $prompt = $this->buildPrompt($product, $tone, $language, $withTags);
 
@@ -213,7 +236,7 @@ class AiPostGenerator
 
     private function generateWithDeepSeek(Product $product, string $tone, string $language, bool $withTags, string $apiKey, string $model = 'deepseek-chat'): array
     {
-        $http   = $this->http ?? new Client(['timeout' => 30, 'http_errors' => false]);
+        $http   = $this->httpClient();
         $prompt = $this->buildPrompt($product, $tone, $language, $withTags);
 
         $response = $http->post('https://api.deepseek.com/chat/completions', [
@@ -240,7 +263,7 @@ class AiPostGenerator
 
     private function generateWithOpenAi(Product $product, string $tone, string $language, bool $withTags, string $apiKey, string $model = 'gpt-4o-mini'): array
     {
-        $http  = $this->http ?? new Client(['timeout' => 30, 'http_errors' => false]);
+        $http  = $this->httpClient();
 
         $prompt   = $this->buildPrompt($product, $tone, $language, $withTags);
         $response = $http->post('https://api.openai.com/v1/chat/completions', [
@@ -290,12 +313,10 @@ TPL;
             $instructions = self::DEFAULT_PROMPT_TEMPLATE;
         }
 
-        // Dynamic data sent from the frontend — always appended automatically.
-        $langInstr = match ($language) {
-            'bn'    => 'Write the caption in Bengali (Bangla).',
-            'mixed' => 'Write the caption in Banglish — Bengali words written in Latin script, mixed with English.',
-            default => 'Write the caption in clear, simple English.',
-        };
+        // Fill any {placeholders} the admin used (e.g. {name}, {features},
+        // {English | Bangla | Mixed}) with real values. Without this, the raw
+        // tokens reach the model verbatim and contradict the language choice.
+        $instructions = $this->fillTemplate($instructions, $product, $tone, $language);
 
         $tagsInstr = $withTags
             ? 'Then list 4–6 relevant hashtags on a new line, prefixed with #.'
@@ -303,19 +324,113 @@ TPL;
 
         $productData = json_encode([
             'title'             => $product->title,
+            'category'          => optional($product->category)->name,
             'short_description' => $product->short_description,
             'description'       => $product->description,
             'price'             => $product->price,
+            'compare_price'     => $product->compare_price,
             'currency'          => $product->currency ?? 'BDT',
             'tags'              => $product->tags ?? [],
         ], JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
 
+        // The language directive is the LAST line on purpose: LLMs weight final
+        // instructions most heavily, so this reliably overrides any language
+        // mentioned earlier in the admin template or implied by English data.
         return $instructions . "\n\n" .
-               "--- Product data from the seller ---\n" .
+               "--- Product data from the seller (authoritative) ---\n" .
                "Tone: {$tone}\n" .
-               "Language: {$langInstr}\n" .
                "Hashtags: {$tagsInstr}\n\n" .
-               $productData;
+               $productData . "\n\n" .
+               $this->languageDirective($language);
+    }
+
+    /**
+     * The single authoritative instruction for the output language. Kept short
+     * and forceful so it isn't diluted by the rest of the prompt.
+     */
+    private function languageDirective(string $language): string
+    {
+        return match ($language) {
+            'bn'    => 'IMPORTANT: Write the entire caption in Bengali (Bangla) using Bengali script. Do not write the caption in English.',
+            'mixed' => 'IMPORTANT: Write the caption in Banglish — Bengali words written in Latin (English) script, mixed with English.',
+            default => 'IMPORTANT: Write the caption in clear, simple English.',
+        };
+    }
+
+    /**
+     * Substitute {placeholder} tokens in the admin's prompt template with the
+     * real product / tone / language values. Handles both simple tokens
+     * ({name}, {price}) and "pick one" tokens ({English | Bangla | Mixed},
+     * {friendly | premium | playful}). Unknown tokens are left untouched.
+     */
+    private function fillTemplate(string $template, Product $product, string $tone, string $language): string
+    {
+        $languageWord = match ($language) {
+            'bn'    => 'Bangla (Bengali)',
+            'mixed' => 'Banglish (Bengali written in Latin script, mixed with English)',
+            default => 'English',
+        };
+
+        $features = ! empty($product->tags)
+            ? implode(', ', $product->tags)
+            : (string) ($product->short_description ?? '');
+
+        $currency = $product->currency ?? 'BDT';
+        $price    = number_format((float) $product->price, 0) . ' ' . $currency;
+        $offer    = $product->compare_price
+            ? (number_format((float) $product->price, 0) . ' ' . $currency . ' (was ' . number_format((float) $product->compare_price, 0) . ')')
+            : $price;
+
+        $map = [
+            'name'              => $product->title,
+            'product name'      => $product->title,
+            'productname'       => $product->title,
+            'title'             => $product->title,
+            'product title'     => $product->title,
+            'product'           => $product->title,
+            'category'          => (string) (optional($product->category)->name ?? ''),
+            'features'          => $features,
+            'key features'      => $features,
+            'keyfeatures'       => $features,
+            'tags'              => $features,
+            'price'             => $price,
+            'price_or_offer'    => $offer,
+            'price or offer'    => $offer,
+            'offer'             => $offer,
+            'description'       => (string) ($product->description ?? $product->short_description ?? ''),
+            'short description' => (string) ($product->short_description ?? ''),
+            'audience'          => '',
+            'target customer'   => '',
+            'currency'          => $currency,
+            'tone'              => $tone,
+            'brand voice'       => $tone,
+            'voice'             => $tone,
+            'language'          => $languageWord,
+            'lang'              => $languageWord,
+        ];
+
+        // Simple tokens: {name}, {price}, … (no pipe inside).
+        $result = preg_replace_callback('/\{\s*([^{}|]+?)\s*\}/u', function ($m) use ($map) {
+            $key = strtolower(trim($m[1]));
+            return array_key_exists($key, $map) ? $map[$key] : $m[0];
+        }, $template) ?? $template;
+
+        // "Pick one" tokens: {English | Bangla | Mixed}, {friendly | premium | …}.
+        $result = preg_replace_callback('/\{([^{}]*\|[^{}]*)\}/u', function ($m) use ($languageWord, $tone) {
+            $opts = strtolower($m[1]);
+            if (str_contains($opts, 'bangla') || str_contains($opts, 'bengali')
+                || str_contains($opts, 'english') || str_contains($opts, 'mixed')) {
+                return $languageWord;
+            }
+            foreach (['friendly', 'premium', 'playful', 'informative', 'professional', 'promo', 'festive', 'casual'] as $w) {
+                if (str_contains($opts, $w)) {
+                    return $tone;
+                }
+            }
+            return $m[0];
+        }, $result) ?? $result;
+
+        return $result;
     }
 
     private function parseAiOutput(string $text, bool $withTags): array

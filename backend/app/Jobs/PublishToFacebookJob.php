@@ -66,7 +66,7 @@ class PublishToFacebookJob implements ShouldQueue
 
         try {
             $result = match ($post->type) {
-                FacebookPost::TYPE_PHOTO       => $graph->publishPhoto($page->page_id, $page->access_token, (string) $post->image_url, $post->message),
+                FacebookPost::TYPE_PHOTO       => $this->publishPhoto($graph, $post),
                 FacebookPost::TYPE_LINK        => $graph->publishLink($page->page_id, $page->access_token, (string) $post->link_url, $post->message),
                 FacebookPost::TYPE_MULTI_PHOTO => $this->publishMulti($graph, $post),
                 default                        => $graph->publishText($page->page_id, $page->access_token, (string) $post->message),
@@ -101,18 +101,63 @@ class PublishToFacebookJob implements ShouldQueue
         }
     }
 
+    private function publishPhoto(FacebookGraphService $graph, FacebookPost $post): array
+    {
+        $url       = (string) $post->image_url;
+        $localPath = $this->resolveLocalImagePath($url);
+
+        // Local/dev images aren't reachable by Facebook's fetchers, so push the
+        // bytes directly. Public URLs are handed to Facebook to fetch as before.
+        return $localPath
+            ? $graph->publishPhotoBinary($post->page->page_id, $post->page->access_token, $localPath, $post->message)
+            : $graph->publishPhoto($post->page->page_id, $post->page->access_token, $url, $post->message);
+    }
+
     private function publishMulti(FacebookGraphService $graph, FacebookPost $post): array
     {
         $mediaIds = [];
         foreach ((array) $post->image_urls as $url) {
             if (! is_string($url) || $url === '') continue;
-            $upload     = $graph->uploadPhotoUnpublished($post->page->page_id, $post->page->access_token, $url);
+            $localPath  = $this->resolveLocalImagePath($url);
+            $upload     = $localPath
+                ? $graph->uploadPhotoUnpublishedBinary($post->page->page_id, $post->page->access_token, $localPath)
+                : $graph->uploadPhotoUnpublished($post->page->page_id, $post->page->access_token, $url);
             $mediaIds[] = $upload['id'];
         }
         if (empty($mediaIds)) {
             throw new FacebookException('No images supplied for multi-photo post.');
         }
         return $graph->publishMultiPhoto($post->page->page_id, $post->page->access_token, $mediaIds, $post->message);
+    }
+
+    /**
+     * Map a public image URL back to a local file path when it points at this
+     * app's own storage (generated images under /storage/*, product uploads
+     * under /uploads/*). Returns null for genuinely remote URLs.
+     */
+    private function resolveLocalImagePath(string $url): ?string
+    {
+        $path = parse_url($url, PHP_URL_PATH);
+        if (! $path) {
+            return null;
+        }
+        $path = ltrim(rawurldecode($path), '/');
+
+        // public/ covers /uploads/* and the storage symlink (/storage/*).
+        $candidate = public_path($path);
+        if (is_file($candidate)) {
+            return $candidate;
+        }
+
+        // Fall back to the real storage path when the storage symlink is absent.
+        if (str_starts_with($path, 'storage/')) {
+            $alt = storage_path('app/public/' . substr($path, strlen('storage/')));
+            if (is_file($alt)) {
+                return $alt;
+            }
+        }
+
+        return null;
     }
 
     private function handleGraphError(FacebookPost $post, FacebookException $e): void

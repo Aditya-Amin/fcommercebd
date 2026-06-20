@@ -8,31 +8,47 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { ProgressBar } from "@/components/ui/ProgressBar";
 import { usePlan } from "@/context/PlanContext";
+import { useAuth } from "@/context/AuthContext";
 import { useToast } from "@/context/ToastContext";
-import { PLAN_LIST } from "@/lib/plans";
+import { getPlans } from "@/lib/api/bkash";
+import { marketingPlanFromPayload, FALLBACK_MARKETING_PLANS, type MarketingPlan } from "@/lib/plans";
 import { formatBDT, cn } from "@/lib/utils";
 import { getPlanIdBySlug } from "@/lib/api/bkash";
 import { startSslCommerzCheckout } from "@/lib/api/sslcommerz";
 import { getSmsStats } from "@/lib/api/sms";
-import type { PlanId } from "@/lib/types";
 import type { SmsStats } from "@/lib/types/sms";
 
 export default function PlanDetailsPage() {
-  const { plan, planId, usage, resetUsage } = usePlan();
+  const { plan, usage, resetUsage } = usePlan();
+  const { user } = useAuth();
   const { toast } = useToast();
-  const [redirectingTo, setRedirectingTo] = useState<PlanId | null>(null);
+  const [redirectingTo, setRedirectingTo] = useState<string | null>(null);
   const [smsStats, setSmsStats] = useState<SmsStats | null>(null);
+  const [plans, setPlans] = useState<MarketingPlan[] | null>(null);
+
+  // The customer's current plan, matched by slug against the live plan list.
+  const activeSlug = user?.subscription?.planId ?? null;
 
   useEffect(() => {
     getSmsStats().then(setSmsStats).catch(() => {});
   }, []);
 
-  async function handleSwitchPlan(target: PlanId) {
-    if (target === planId || redirectingTo) return;
-    await doCheckout(target);
-  }
+  useEffect(() => {
+    let active = true;
+    getPlans()
+      .then((data) => {
+        if (active) setPlans(data.map(marketingPlanFromPayload));
+      })
+      .catch(() => {
+        if (active) setPlans(FALLBACK_MARKETING_PLANS);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
 
-  async function doCheckout(target: PlanId) {
+  async function handleSwitchPlan(target: string) {
+    if (target === activeSlug || redirectingTo) return;
     setRedirectingTo(target);
     try {
       const dbId = await getPlanIdBySlug(target);
@@ -64,55 +80,63 @@ export default function PlanDetailsPage() {
           }
         />
         <div className="space-y-5 p-5">
-          <div className="grid gap-3 sm:grid-cols-2">
-            {PLAN_LIST.map((p) => {
-              const isActive = p.id === planId;
-              const isRedirecting = redirectingTo === p.id;
-              return (
-                <div
-                  key={p.id}
-                  className={cn(
-                    "relative flex flex-col items-start gap-3 rounded-xl border p-4 text-left transition",
-                    isActive
-                      ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                      : "border-border"
-                  )}
-                >
-                  {isActive && (
-                    <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-white">
-                      <Check className="h-3 w-3" /> Active
-                    </span>
-                  )}
-                  <div className="flex items-center gap-2">
-                    <p className="font-semibold text-ink">{p.name}</p>
-                    {p.highlight && (
-                      <Badge tone="primary">
-                        <Sparkles className="h-3 w-3" /> Popular
-                      </Badge>
+          {!plans ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {[0, 1].map((i) => (
+                <div key={i} className="h-40 animate-pulse rounded-xl border border-border bg-slate-50" />
+              ))}
+            </div>
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-2">
+              {plans.map((p) => {
+                const isActive = p.slug === activeSlug;
+                const isRedirecting = redirectingTo === p.slug;
+                return (
+                  <div
+                    key={p.slug}
+                    className={cn(
+                      "relative flex flex-col items-start gap-3 rounded-xl border p-4 text-left transition",
+                      isActive
+                        ? "border-primary bg-primary/5 ring-1 ring-primary/20"
+                        : "border-border"
+                    )}
+                  >
+                    {isActive && (
+                      <span className="absolute right-3 top-3 inline-flex items-center gap-1 rounded-full bg-primary px-2 py-0.5 text-xs font-medium text-white">
+                        <Check className="h-3 w-3" /> Active
+                      </span>
+                    )}
+                    <div className="flex items-center gap-2">
+                      <p className="font-semibold text-ink">{p.name}</p>
+                      {p.popular && (
+                        <Badge tone="primary">
+                          <Sparkles className="h-3 w-3" /> Popular
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-2xl font-bold text-ink">
+                      {formatBDT(p.price)}
+                      <span className="text-xs font-normal text-ink-muted"> /mo</span>
+                    </p>
+                    {p.tagline && <p className="text-xs text-ink-muted">{p.tagline}</p>}
+
+                    {!isActive && (
+                      <Button
+                        size="sm"
+                        fullWidth
+                        leftIcon={<ArrowUpRight className="h-3.5 w-3.5" />}
+                        loading={isRedirecting}
+                        disabled={!!redirectingTo}
+                        onClick={() => handleSwitchPlan(p.slug)}
+                      >
+                        {isRedirecting ? "পেমেন্ট পেজে যাচ্ছে…" : `Switch to ${p.name}`}
+                      </Button>
                     )}
                   </div>
-                  <p className="text-2xl font-bold text-ink">
-                    {formatBDT(p.price)}
-                    <span className="text-xs font-normal text-ink-muted"> /mo</span>
-                  </p>
-                  <p className="text-xs text-ink-muted">{p.tagline}</p>
-
-                  {!isActive && (
-                    <Button
-                      size="sm"
-                      fullWidth
-                      leftIcon={<ArrowUpRight className="h-3.5 w-3.5" />}
-                      loading={isRedirecting}
-                      disabled={!!redirectingTo}
-                      onClick={() => handleSwitchPlan(p.id)}
-                    >
-                      {isRedirecting ? "পেমেন্ট পেজে যাচ্ছে…" : `Switch to ${p.name}`}
-                    </Button>
-                  )}
-                </div>
-              );
-            })}
-          </div>
+                );
+              })}
+            </div>
+          )}
           <p className="text-xs text-ink-muted">
             Plan changes are charged through SSLCommerz. Your new {plan.currency || "৳"} balance and
             limits apply immediately after payment completes.

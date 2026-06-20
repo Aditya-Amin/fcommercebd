@@ -230,6 +230,31 @@ class FacebookGraphService
     }
 
     /**
+     * Like publishPhoto(), but uploads the raw image bytes (multipart `source`)
+     * instead of giving Facebook a URL to fetch. Use this when the image lives
+     * on a host Facebook can't reach (e.g. localhost in dev, or a private box).
+     *
+     * @return array{id:string, post_id?:string}
+     */
+    public function publishPhotoBinary(string $pageId, string $pageAccessToken, string $filePath, ?string $caption = null): array
+    {
+        $multipart = [
+            ['name' => 'access_token', 'contents' => $pageAccessToken],
+            ['name' => 'published',    'contents' => 'true'],
+            ['name' => 'source',       'contents' => fopen($filePath, 'r'), 'filename' => basename($filePath)],
+        ];
+        if ($caption !== null && $caption !== '') {
+            $multipart[] = ['name' => 'caption', 'contents' => $caption];
+        }
+
+        $response = $this->http->post($this->endpoint("/{$pageId}/photos"), [
+            'multipart' => $multipart,
+        ]);
+
+        return $this->decode($response, 'publish.photo_binary');
+    }
+
+    /**
      * Upload a photo without publishing. Returns the photo `id` to attach to a feed post.
      *
      * @return array{id:string}
@@ -245,6 +270,25 @@ class FacebookGraphService
         ]);
 
         return $this->decode($response, 'publish.photo_unpublished');
+    }
+
+    /**
+     * Binary variant of uploadPhotoUnpublished() — uploads raw bytes for
+     * multi-photo posts whose images aren't on a Facebook-reachable URL.
+     *
+     * @return array{id:string}
+     */
+    public function uploadPhotoUnpublishedBinary(string $pageId, string $pageAccessToken, string $filePath): array
+    {
+        $response = $this->http->post($this->endpoint("/{$pageId}/photos"), [
+            'multipart' => [
+                ['name' => 'access_token', 'contents' => $pageAccessToken],
+                ['name' => 'published',    'contents' => 'false'],
+                ['name' => 'source',       'contents' => fopen($filePath, 'r'), 'filename' => basename($filePath)],
+            ],
+        ]);
+
+        return $this->decode($response, 'publish.photo_unpublished_binary');
     }
 
     /**

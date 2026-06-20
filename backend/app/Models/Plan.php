@@ -12,6 +12,7 @@ class Plan extends Model
 
     protected $fillable = [
         'name',
+        'tagline',
         'slug',
         'price',
         'currency',
@@ -20,6 +21,7 @@ class Plan extends Model
         'features',
         'limits',
         'is_active',
+        'is_popular',
     ];
 
     protected $casts = [
@@ -28,6 +30,7 @@ class Plan extends Model
         'features'      => 'array',
         'limits'        => 'array',
         'is_active'     => 'boolean',
+        'is_popular'    => 'boolean',
     ];
 
     /**

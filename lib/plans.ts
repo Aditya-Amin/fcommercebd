@@ -1,4 +1,5 @@
 import type { Plan, PlanId } from "./types";
+import type { PlanPayload } from "./api/bkash";
 
 export const FREE_TRIAL_DURATION_MS = 30 * 24 * 60 * 60 * 1000; // 30 days
 
@@ -59,3 +60,47 @@ export const PLAN_LIST: Plan[] = [PLANS.starter, PLANS.growth];
 export function formatPrice(plan: Plan): string {
   return `${plan.currency}${plan.price}`;
 }
+
+/**
+ * A plan shaped for the public-facing pricing cards & dashboard switcher.
+ * Sourced from the admin-managed plans (`/api/plans`) — see `marketingPlanFromPayload`.
+ */
+export interface MarketingPlan {
+  slug: string;
+  name: string;
+  tagline: string | null;
+  price: number;
+  currency: string;
+  features: string[];
+  popular: boolean;
+  hasAi: boolean;
+}
+
+/** Map a backend plan payload onto the display shape the cards render. */
+export function marketingPlanFromPayload(p: PlanPayload): MarketingPlan {
+  return {
+    slug: p.slug,
+    name: p.name,
+    tagline: p.tagline ?? null,
+    price: Number(p.price),
+    currency: p.currency || "৳",
+    features: p.features ?? [],
+    popular: Boolean(p.is_popular),
+    hasAi: (p.limits?.aiGenerations ?? 0) > 0
+  };
+}
+
+/**
+ * Fallback used when the live plans request fails, so the pricing page is
+ * never blank. Derived from the bundled PLAN_LIST (included features only).
+ */
+export const FALLBACK_MARKETING_PLANS: MarketingPlan[] = PLAN_LIST.map((p) => ({
+  slug: p.id,
+  name: p.name,
+  tagline: p.tagline,
+  price: p.price,
+  currency: p.currency,
+  features: p.features.filter((f) => f.included).map((f) => f.label),
+  popular: Boolean(p.highlight),
+  hasAi: p.limits.aiGenerations > 0
+}));

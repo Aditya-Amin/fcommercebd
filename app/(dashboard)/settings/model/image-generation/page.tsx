@@ -17,7 +17,7 @@ const IMAGE_PROVIDERS = [
   },
   {
     id: "openai",
-    name: "OpenAI DALL-E 3",
+    name: "OpenAI gpt-image-1",
     description: "High-quality AI image generation. Best for product visuals and banners.",
     needsKey: true,
   },

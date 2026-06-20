@@ -67,7 +67,7 @@ async function jsonOrThrow<T>(res: Response): Promise<T> {
 }
 
 /**
- * Generate a refined DALL-E style image prompt from a user topic.
+ * Generate a refined image-generation prompt from a user topic.
  * Used in Human Edit mode so the user can review/edit before generating.
  */
 export async function generateImagePrompt(payload: {

@@ -24,7 +24,8 @@ class SettingsController extends Controller
         $data = $request->validate([
             'provider'   => ['required', 'in:stub,openai,replicate'],
             'api_key'    => ['nullable', 'string', 'max:500'],
-            'image_size' => ['required', 'in:512x512,768x768,1024x1024'],
+            // gpt-image-1 sizes: square / portrait / landscape.
+            'image_size' => ['required', 'in:1024x1024,1024x1536,1536x1024'],
         ]);
 
         Setting::set('image.provider',   $data['provider']);

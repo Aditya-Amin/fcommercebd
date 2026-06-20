@@ -3,6 +3,7 @@
 namespace App\Services\Ai;
 
 use App\Models\Setting;
+use Composer\CaBundle\CaBundle;
 use GuzzleHttp\Client;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -14,7 +15,7 @@ use Illuminate\Support\Str;
  *
  * Providers (configured in admin → Settings → Image Generation):
  *   stub      — returns a deterministic placeholder URL (no API key needed)
- *   openai    — DALL-E 3 via OpenAI Images API
+ *   openai    — gpt-image-1 via OpenAI Images API
  *   replicate — Stable Diffusion via Replicate API
  */
 class ImageGenerationService
@@ -23,7 +24,16 @@ class ImageGenerationService
 
     private function http(): Client
     {
-        return $this->http ?? new Client(['timeout' => 60]);
+        if ($this->http) {
+            return $this->http;
+        }
+
+        // Pin the CA bundle so HTTPS verification works without a php.ini
+        // curl.cainfo (otherwise every provider call dies with cURL error 60).
+        return new Client([
+            'timeout' => 60,
+            'verify'  => CaBundle::getSystemCaRootBundlePath(),
+        ]);
     }
 
     /**
@@ -43,7 +53,7 @@ class ImageGenerationService
             the text on that element must be in Bangla characters.'
             : '';
 
-        $sysPrompt = "You are an expert at writing concise, vivid image editing prompts for AI image models like DALL-E. Given a user's edit instruction in {$langLabel} describing how to modify an existing product photo (e.g. 'add a 20% discount badge', 'change background to white', 'add festive decorations'), 
+        $sysPrompt = "You are an expert at writing concise, vivid image editing prompts for AI image models like gpt-image-1. Given a user's edit instruction in {$langLabel} describing how to modify an existing product photo (e.g. 'add a 20% discount badge', 'change background to white', 'add festive decorations'), 
         write a single, detailed English image edit prompt (max 200 words) 
         suitable for an AI image editing API. Describe the desired final state of the image clearly.
         {$textNote} Respond with only the prompt text, no explanation.";
@@ -191,14 +201,37 @@ class ImageGenerationService
         $res = $this->http()->post('https://api.openai.com/v1/images/generations', [
             'headers' => ['Authorization' => "Bearer {$key}", 'Content-Type' => 'application/json'],
             'json'    => [
-                'model'   => 'dall-e-3',
-                'prompt'  => $prompt,
-                'n'       => 1,
-                'size'    => in_array($size, ['1024x1024', '1024x1792', '1792x1024']) ? $size : '1024x1024',
+                'model'  => 'gpt-image-1',
+                'prompt' => $prompt,
+                'n'      => 1,
+                'size'   => $this->openAiImageSize($size),
             ],
         ]);
         $body = json_decode($res->getBody()->getContents(), true);
-        return $body['data'][0]['url'] ?? $this->stubImageUrl($prompt);
+
+        // gpt-image-1 always returns base64 (never a URL), so persist the bytes
+        // and hand back a public storage URL like the edit path does.
+        $b64 = $body['data'][0]['b64_json'] ?? null;
+        if ($b64 === null) {
+            Log::warning('image.generate.openai.no_data', ['body' => $body]);
+            return $this->stubImageUrl($prompt);
+        }
+        return $this->saveBase64Image($b64);
+    }
+
+    /**
+     * Map a configured size onto one gpt-image-1 accepts. Supported values:
+     * 1024x1024 (square), 1024x1536 (portrait), 1536x1024 (landscape), auto.
+     * Legacy DALL-E portrait/landscape sizes are translated to the closest match.
+     */
+    private function openAiImageSize(string $size): string
+    {
+        return match ($size) {
+            '1024x1024', '1024x1536', '1536x1024', 'auto' => $size,
+            '1024x1792' => '1024x1536', // legacy DALL-E portrait
+            '1792x1024' => '1536x1024', // legacy DALL-E landscape
+            default     => '1024x1024',
+        };
     }
 
     private function generateWithReplicate(string $prompt, string $key): string
@@ -235,17 +268,16 @@ class ImageGenerationService
      */
     private function editWithOpenAi(string $imageBytes, string $prompt, string $key, string $size): string
     {
-        $validSize = in_array($size, ['1024x1024', '1024x1792', '1792x1024']) ? $size : '1024x1024';
-
+        // Note: gpt-image-1 does not accept `response_format` (it always returns
+        // base64), and uses its own size set — so no response_format is sent.
         $res = $this->http()->post('https://api.openai.com/v1/images/edits', [
             'headers'    => ['Authorization' => "Bearer {$key}"],
             'multipart'  => [
-                ['name' => 'model',           'contents' => 'gpt-image-1'],
-                ['name' => 'image[]',         'contents' => $imageBytes, 'filename' => 'product.png', 'headers' => ['Content-Type' => 'image/png']],
-                ['name' => 'prompt',          'contents' => $prompt],
-                ['name' => 'n',               'contents' => '1'],
-                ['name' => 'size',            'contents' => $validSize],
-                ['name' => 'response_format', 'contents' => 'b64_json'],
+                ['name' => 'model',   'contents' => 'gpt-image-1'],
+                ['name' => 'image[]', 'contents' => $imageBytes, 'filename' => 'product.png', 'headers' => ['Content-Type' => 'image/png']],
+                ['name' => 'prompt',  'contents' => $prompt],
+                ['name' => 'n',       'contents' => '1'],
+                ['name' => 'size',    'contents' => $this->openAiImageSize($size)],
             ],
         ]);
 

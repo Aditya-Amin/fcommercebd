@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminNotificationController;
 use App\Http\Controllers\Admin\AdminSupportController;
 use App\Http\Controllers\Admin\AuthController;
 use App\Http\Controllers\Admin\DashboardController;
+use App\Http\Controllers\Admin\PlanController;
 use App\Http\Controllers\Admin\SettingsController;
 use App\Http\Controllers\Api\BkashController;
 use App\Http\Controllers\Api\SslCommerzController;
@@ -67,6 +68,16 @@ Route::prefix('admin')->name('admin.')->middleware('admin')->group(function () {
     Route::post('/users/{user}/plan',            [DashboardController::class, 'assignPlan'])->name('users.plan.assign');
     Route::post('/users/{user}/send-sms',        [DashboardController::class, 'sendUserSms'])->name('users.send-sms');
     Route::delete('/users/{user}',     [DashboardController::class, 'destroyUser'])->name('users.destroy');
+
+    // Plans CRUD
+    Route::prefix('plans')->name('plans.')->group(function () {
+        Route::get('/',            [PlanController::class, 'index'])->name('index');
+        Route::get('/create',      [PlanController::class, 'create'])->name('create');
+        Route::post('/',           [PlanController::class, 'store'])->name('store');
+        Route::get('/{plan}/edit', [PlanController::class, 'edit'])->name('edit');
+        Route::put('/{plan}',      [PlanController::class, 'update'])->name('update');
+        Route::delete('/{plan}',   [PlanController::class, 'destroy'])->name('destroy');
+    });
 
     // Support tickets
     Route::prefix('support')->name('support.')->group(function () {

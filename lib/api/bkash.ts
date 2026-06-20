@@ -153,15 +153,25 @@ export async function queryBkashPayment(paymentID: string): Promise<Record<strin
   return jsonOrThrow<Record<string, unknown>>(res);
 }
 
+export interface PlanLimits {
+  fbPosts?: number;
+  aiGenerations?: number;
+  sms?: number;
+}
+
 export interface PlanPayload {
   id: number;
   name: string;
+  tagline: string | null;
   slug: string;
   price: string;
   currency: string;
   duration: string;
   duration_days: number;
   features: string[] | null;
+  limits: PlanLimits | null;
+  is_active?: boolean;
+  is_popular?: boolean;
 }
 
 let plansCache: PlanPayload[] | null = null;
@@ -170,6 +180,7 @@ const MOCK_PLANS: PlanPayload[] = [
   {
     id: 1,
     name: "Starter",
+    tagline: "যাঁরা সদ্য ফেসবুকে বিজনেস শুরু করেছেন তাঁদের জন্য।",
     slug: "starter",
     price: "149",
     currency: "৳",
@@ -180,11 +191,15 @@ const MOCK_PLANS: PlanPayload[] = [
       "ফেসবুক পেজে পোস্ট",
       "Steadfast ও Pathao কুরিয়ার",
       "মাসে ১০টি প্রমোশনাল SMS"
-    ]
+    ],
+    limits: { fbPosts: 30, aiGenerations: 5, sms: 10 },
+    is_active: true,
+    is_popular: false
   },
   {
     id: 2,
     name: "Growth",
+    tagline: "যাঁরা AI ও অটোমেশন দিয়ে ব্যবসা বড় করতে প্রস্তুত।",
     slug: "growth",
     price: "599",
     currency: "৳",
@@ -197,7 +212,10 @@ const MOCK_PLANS: PlanPayload[] = [
       "দ্রুত প্রসেসিং",
       "প্রায়োরিটি সাপোর্ট",
       "বাল্ক প্রোডাক্ট আপলোড"
-    ]
+    ],
+    limits: { fbPosts: 300, aiGenerations: 60, sms: 300 },
+    is_active: true,
+    is_popular: true
   }
 ];
 
