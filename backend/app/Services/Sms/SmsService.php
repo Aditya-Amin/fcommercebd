@@ -2,6 +2,7 @@
 
 namespace App\Services\Sms;
 
+use App\Services\Sms\Drivers\BdbulksmsDriver;
 use App\Services\Sms\Drivers\GreenwebDriver;
 use App\Services\Sms\Drivers\LogDriver;
 use Illuminate\Support\Facades\Log;
@@ -20,6 +21,11 @@ class SmsService
     {
         $config = config('sms');
         $this->driver = match ($config['driver']) {
+            'bdbulksms' => new BdbulksmsDriver(
+                endpoint: $config['bdbulksms']['endpoint'],
+                token:    $config['bdbulksms']['token'] ?? null,
+                timeoutSeconds: (int) $config['timeout'],
+            ),
             'greenweb' => new GreenwebDriver(
                 endpoint: $config['greenweb']['endpoint'],
                 token:    $config['greenweb']['token'] ?? null,
