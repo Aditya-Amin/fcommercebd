@@ -54,7 +54,7 @@
 
         <a href="{{ route('admin.users') }}"
            class="nav-item flex items-center gap-3 px-3 py-2.5 text-sm {{ request()->routeIs('admin.users') ? 'active text-white' : 'text-gray-400' }}">
-            <i class="fa-solid fa-database w-4 text-center"></i> User Data
+            <i class="fa-solid fa-database w-4 text-center"></i> Users
         </a>
 
         <a href="{{ route('admin.plans.index') }}"
